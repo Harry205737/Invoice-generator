@@ -1,258 +1,144 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Invoice Generator</title>
+<meta charset="UTF-8" />
+<title>Invoice App</title>
 <style>
     body { font-family: Arial; margin: 20px; }
-
-    h1 { margin: 0; }
-
-    .flex { display: flex; justify-content: space-between; gap: 20px; }
-
-    .invoice-list-item {
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin-bottom: 8px;
-        border-left-width: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .status-paid { border-left-color: green; background: #e9ffe9; }
-    .status-unpaid { border-left-color: goldenrod; background: #fff9d6; }
-    .status-overdue { border-left-color: red; background: #ffe6e6; }
-
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+    .row { display: flex; justify-content: space-between; }
+    .col { width: 48%; }
+    .invoice-list-item { border: 1px solid #ccc; padding: 10px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; }
+    .status-paid { background: #c8f7c5; }
+    .status-unpaid { background: #fff7b3; }
+    .status-overdue { background: #f7c5c5; }
 </style>
 </head>
 <body>
+<h2><img id="logoPreview" src="" height="60" style="vertical-align:middle"> &nbsp; <input type="file" id="logoUpload" accept="image/*"> <span style="float:right;font-size:40px;font-weight:bold;">INVOICE</span></h2>
 
-<h2>Invoice Creator</h2>
-
-<label>Upload Logo:
-    <input type="file" id="logoUpload" accept="image/*">
-</label>
-<br><br>
-
-<div class="flex">
-    <div style="width:48%">
+<div class="row">
+    <div class="col">
         <h3>Client Details</h3>
-        <input id="clientName" placeholder="Client Name" style="width:100%"><br><br>
-        <input id="clientAddress" placeholder="Address" style="width:100%"><br><br>
-        <input id="clientPhone" placeholder="Phone" style="width:100%"><br><br>
-        <input id="clientEmail" placeholder="Email" style="width:100%">
+        <input id="clientName" placeholder="Client Name"><br>
+        <input id="clientEmail" placeholder="Client Email"><br>
+        <input id="clientPhone" placeholder="Client Phone"><br>
+        <textarea id="clientAddress" placeholder="Client Address"></textarea>
     </div>
-
-    <div style="width:48%">
+    <div class="col">
         <h3>Payee Details</h3>
-        <input id="payeeName" placeholder="Your Name / Business" style="width:100%"><br><br>
-        <input id="payeeAddress" placeholder="Address" style="width:100%"><br><br>
-        <input id="payeeBSB" placeholder="BSB" style="width:48%"> 
-        <input id="payeeACC" placeholder="Account No." style="width:48%"><br><br>
-        <input id="payeeEmail" placeholder="Email" style="width:100%">
+        <input id="payeeName" placeholder="Your Name"><br>
+        <input id="payeeBSB" placeholder="BSB"><br>
+        <input id="payeeAccount" placeholder="Account Number"><br>
+        <input id="payeeABN" placeholder="ABN"><br>
+        <textarea id="payeeAddress" placeholder="Your Address"></textarea>
     </div>
 </div>
 
-<br>
-
-<label>Due Date: <input type="date" id="dueDate"></label>
-<br><br>
+<h3>Invoice Info</h3>
+<input id="invoiceNumber" placeholder="Invoice Number"><br>
+<input id="invoiceDate" type="date"><br>
+<input id="dueDate" type="date"><br>
+<textarea id="invoiceNotes" placeholder="Notes"></textarea>
 
 <h3>Items</h3>
-<div id="itemList"></div>
+<div id="items"></div>
 <button onclick="addItem()">Add Item</button>
 
 <br><br>
+<select id="invoiceStatus">
+    <option value="unpaid">Unpaid</option>
+    <option value="paid">Paid</option>
+</select>
 <button onclick="saveInvoice()">Save Invoice</button>
+<button onclick="openInvoiceTab()">Open Invoice</button>
 
 <hr>
-
-<h2>Invoices</h2>
+<h3>Invoices</h3>
+<select id="filter" onchange="renderInvoices()">
+    <option value="all">All</option>
+    <option value="paid">Paid</option>
+    <option value="unpaid">Unpaid</option>
+    <option value="overdue">Overdue</option>
+</select>
 <div id="invoiceList"></div>
 
 <script>
-let logoData = "";
+let savedFields = ['payeeName','payeeBSB','payeeAccount','payeeABN','invoiceNumber','invoiceDate','invoiceNotes'];
 
-document.getElementById("logoUpload").addEventListener("change", function(e) {
-    const reader = new FileReader();
-    reader.onload = () => { logoData = reader.result; };
-    reader.readAsDataURL(e.target.files[0]);
+function loadSavedFields(){
+  savedFields.forEach(id=>{ let v=localStorage.getItem(id); if(v!==null) document.getElementById(id).value=v; });
+  let logo = localStorage.getItem('logo'); if(logo) document.getElementById('logoPreview').src = logo;
+}
+function saveField(id){ localStorage.setItem(id, document.getElementById(id).value); }
+
+['logoUpload'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',e=>{
+    let file=e.target.files[0]; let r=new FileReader();
+    r.onload=(ev)=>{ localStorage.setItem('logo',ev.target.result); document.getElementById('logoPreview').src=ev.target.result; }
+    if(file) r.readAsDataURL(file);
+  });
 });
 
-function addItem() {
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-        <input placeholder="Description">
-        <input type="number" placeholder="Qty" step="1" style="width:60px">
-        <input type="number" placeholder="Price" step="0.01" style="width:100px">
-        <button onclick="this.parentElement.remove()">X</button>
-    `;
-    itemList.appendChild(div);
+savedFields.forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>saveField(id));
+});
+
+function addItem(){
+  let d=document.createElement('div');
+  d.innerHTML = '<input class="desc" placeholder="Description"> <input class="amt" type="number" placeholder="Amount">';
+  document.getElementById('items').appendChild(d);
 }
 
-function saveInvoice() {
-    const id = Date.now();
-
-    const items = [...document.querySelectorAll(".item")].map(x => {
-        const i = x.querySelectorAll("input");
-        return {
-            desc: i[0].value,
-            qty: Number(i[1].value),
-            price: Number(i[2].value)
-        };
-    });
-
-    const invoice = {
-        id,
-        logo: logoData,
-        client: {
-            name: clientName.value,
-            address: clientAddress.value,
-            phone: clientPhone.value,
-            email: clientEmail.value
-        },
-        payee: {
-            name: payeeName.value,
-            address: payeeAddress.value,
-            bsb: payeeBSB.value,
-            acc: payeeACC.value,
-            email: payeeEmail.value
-        },
-        due: dueDate.value,
-        status: "unpaid",
-        items
-    };
-
-    const invoices = getInvoices();
-    invoices.push(invoice);
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-    loadInvoices();
-    alert("Invoice saved!");
+function saveInvoice(){
+  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
+  let obj={
+    id: Date.now(),
+    client:{name:clientName.value,email:clientEmail.value,phone:clientPhone.value,address:clientAddress.value},
+    payee:{name:payeeName.value,bsb:payeeBSB.value,acc:payeeAccount.value,abn:payeeABN.value,address:payeeAddress.value},
+    meta:{number:invoiceNumber.value,date:invoiceDate.value,due:dueDate.value,notes:invoiceNotes.value,status:invoiceStatus.value},
+    items:[...document.querySelectorAll('#items div')].map(el=>({d:el.querySelector('.desc').value,a:el.querySelector('.amt').value}))
+  };
+  inv.push(obj);
+  localStorage.setItem('invoices',JSON.stringify(inv));
+  renderInvoices();
 }
 
-function getInvoices() {
-    return JSON.parse(localStorage.getItem("invoices") || "[]");
+function renderInvoices(){
+  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
+  let f = filter.value;
+  let out='';
+  let now = new Date().toISOString().split('T')[0];
+
+  inv.forEach(x=>{
+    let status = x.meta.status;
+    if(x.meta.due && x.meta.due < now && status!=='paid') status='overdue';
+    if(f!=='all' && status!==f) return;
+
+    let cls = status==='paid'?'status-paid':status==='overdue'?'status-overdue':'status-unpaid';
+    out += `<div class="invoice-list-item ${cls}">#${x.meta.number} - ${x.client.name}
+      <button onclick="openSpecific(${x.id})">Open</button>
+      <button onclick="delInv(${x.id})">Delete</button></div>`;
+  });
+  invoiceList.innerHTML = out;
 }
 
-function loadInvoices() {
-    const list = document.getElementById("invoiceList");
-    list.innerHTML = "";
-    const invoices = getInvoices();
-
-    invoices.forEach(inv => {
-        updateOverdue(inv);
-
-        const row = document.createElement("div");
-        row.className = `invoice-list-item status-${inv.status}`;
-
-        row.innerHTML = `
-            <div>
-                <strong>Invoice #${inv.id}</strong><br>
-                Client: ${inv.client.name}<br>
-                Due: ${inv.due}<br>
-                Status: 
-                <select onchange="changeStatus(${inv.id}, this.value)">
-                    <option value="paid" ${inv.status==="paid"?"selected":""}>Paid</option>
-                    <option value="unpaid" ${inv.status==="unpaid"?"selected":""}>Unpaid</option>
-                    <option value="overdue" ${inv.status==="overdue"?"selected":""}>Overdue</option>
-                </select>
-            </div>
-            <div>
-                <button onclick="openInvoice(${inv.id})">Open</button>
-                <button onclick="deleteInvoice(${inv.id})">Delete</button>
-            </div>
-        `;
-
-        list.appendChild(row);
-    });
+function openSpecific(id){
+  let inv = JSON.parse(localStorage.getItem('invoices')||'[]').find(x=>x.id===id);
+  let w=window.open();
+  w.document.write('<pre>'+JSON.stringify(inv,null,2)+'</pre>');
 }
 
-function updateOverdue(inv) {
-    if (inv.status !== "paid") {
-        if (new Date(inv.due) < new Date()) {
-            inv.status = "overdue";
-            localStorage.setItem("invoices", JSON.stringify(getInvoices()));
-        }
-    }
-}
+function openInvoiceTab(){ openSpecific(); }
 
-function changeStatus(id, status) {
-    const invoices = getInvoices();
-    const inv = invoices.find(x => x.id === id);
-    inv.status = status;
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-    loadInvoices();
-}
+function delInv(id){ if(confirm('Delete invoice?')){
+  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
+  inv = inv.filter(x=>x.id!==id);
+  localStorage.setItem('invoices',JSON.stringify(inv));
+  renderInvoices();
+}}
 
-function deleteInvoice(id) {
-    if (!confirm("Delete this invoice?")) return;
-    let invoices = getInvoices();
-    invoices = invoices.filter(x => x.id !== id);
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-    loadInvoices();
-}
-
-function openInvoice(id) {
-    const inv = getInvoices().find(x => x.id === id);
-
-    let total = 0;
-    inv.items.forEach(i => total += i.qty * i.price);
-
-    const win = window.open("", "_blank");
-    win.document.write(`
-        <html><body>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <img src="${inv.logo}" style="height:80px;">
-            <h1>INVOICE</h1>
-        </div>
-
-        <hr>
-
-        <div style="display:flex;justify-content:space-between;">
-            <div>
-                <h3>Client</h3>
-                ${inv.client.name}<br>
-                ${inv.client.address}<br>
-                ${inv.client.phone}<br>
-                ${inv.client.email}
-            </div>
-
-            <div>
-                <h3>Payee</h3>
-                ${inv.payee.name}<br>
-                ${inv.payee.address}<br>
-                BSB: ${inv.payee.bsb}<br>
-                ACC: ${inv.payee.acc}<br>
-                ${inv.payee.email}
-            </div>
-        </div>
-
-        <br>
-        <strong>Due Date:</strong> ${inv.due}
-        <br><br>
-
-        <table>
-            <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
-            ${inv.items.map(i => `
-                <tr>
-                    <td>${i.desc}</td>
-                    <td>${i.qty}</td>
-                    <td>$${i.price.toFixed(2)}</td>
-                    <td>$${(i.qty * i.price).toFixed(2)}</td>
-                </tr>
-            `).join("")}
-            <tr><td colspan="3"><strong>Total</strong></td><td><strong>$${total.toFixed(2)}</strong></td></tr>
-        </table>
-        </body></html>
-    `);
-}
-
-loadInvoices();
-addItem();
+loadSavedFields();
+renderInvoices();
 </script>
 </body>
 </html>
