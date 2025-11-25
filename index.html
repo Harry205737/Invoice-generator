@@ -98,7 +98,8 @@ function listInvoices(){
       <td>${inv.paid?"Paid":"Unpaid"}</td>
       <td>${inv.total.toFixed(2)}</td>
       <td>
-        <button onclick="togglePaid(${i})">Toggle Paid</button>
+        <button onclick=\"printInvoice(i)\">Print</button>
+        <button onclick=\"togglePaid(i)\">Toggle Paid</button(${i})">Toggle Paid</button>
         <button onclick="delInv(${i})">Delete</button>
       </td>`;
     tbody.appendChild(tr);
