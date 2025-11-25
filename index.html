@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice Generator</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
-    h1 { text-align: center; }
-    input, textarea { width: 100%; margin: 5px 0 15px; padding: 8px; box-sizing: border-box; }
-    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
-    .invoice-item { display: flex; gap: 10px; margin-bottom: 10px; }
-    .invoice-item input { flex: 1; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice Generator & Manager</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
+  h1 { text-align: center; }
+  input, textarea, select { width: 100%; margin: 5px 0 15px; padding: 8px; box-sizing: border-box; }
+  button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+  .invoice-item { display: flex; gap: 10px; margin-bottom: 10px; }
+  .invoice-item input { flex: 1; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
+  th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+  th { background: #eee; }
+</style>
 </head>
 <body>
-  <h1>Invoice Generator</h1>
 
+<h1>Invoice Generator & Manager</h1>
+
+<div>
+  <h3>Create Invoice</h3>
   <label>Client Name:</label>
   <input type="text" id="clientName" placeholder="Client Name">
 
@@ -25,6 +31,13 @@
   <label>Date:</label>
   <input type="date" id="invoiceDate">
 
+  <label>Status:</label>
+  <select id="invoiceStatus">
+    <option value="Unpaid">Unpaid</option>
+    <option value="Paid">Paid</option>
+    <option value="Overdue">Overdue</option>
+  </select>
+
   <h3>Items</h3>
   <div id="items"></div>
   <button onclick="addItem()">Add Item</button>
@@ -33,87 +46,161 @@
   <textarea id="notes" placeholder="Additional notes..."></textarea>
 
   <br>
-  <button onclick="generateInvoice()">Generate Invoice</button>
+  <button onclick="saveInvoice()">Save Invoice</button>
+</div>
 
-  <script>
-    let itemsContainer = document.getElementById('items');
+<hr>
 
-    function addItem() {
-      const div = document.createElement('div');
-      div.className = 'invoice-item';
-      div.innerHTML = `
-        <input type="text" placeholder="Description">
-        <input type="number" placeholder="Qty" min="0">
-        <input type="number" placeholder="Price" min="0" step="0.01">
-        <button onclick="this.parentElement.remove()">Remove</button>
-      `;
-      itemsContainer.appendChild(div);
-    }
+<h3>Invoice List</h3>
+<label>Filter by Status:</label>
+<select id="filterStatus" onchange="renderInvoiceList()">
+  <option value="All">All</option>
+  <option value="Paid">Paid</option>
+  <option value="Unpaid">Unpaid</option>
+  <option value="Overdue">Overdue</option>
+</select>
 
-    function generateInvoice() {
-      const clientName = document.getElementById('clientName').value;
-      const invoiceNumber = document.getElementById('invoiceNumber').value;
-      const invoiceDate = document.getElementById('invoiceDate').value;
-      const notes = document.getElementById('notes').value;
+<table id="invoiceTable">
+  <thead>
+    <tr>
+      <th>Invoice #</th>
+      <th>Client</th>
+      <th>Date</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-      const items = Array.from(document.querySelectorAll('.invoice-item')).map(item => {
-        const inputs = item.querySelectorAll('input');
-        return {
-          description: inputs[0].value,
-          qty: parseFloat(inputs[1].value) || 0,
-          price: parseFloat(inputs[2].value) || 0
-        };
-      });
+<script>
+let itemsContainer = document.getElementById('items');
+let invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
 
-      let total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+// Add first item automatically
+window.onload = () => { addItem(); renderInvoiceList(); }
 
-      let html = `
-        <html>
-          <head>
-            <title>Invoice ${invoiceNumber}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              h1, h2 { text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-              th { background: #eee; }
-            </style>
-          </head>
-          <body>
-            <h1>Invoice</h1>
-            <h2>Invoice #: ${invoiceNumber}</h2>
-            <p><strong>Client:</strong> ${clientName}</p>
-            <p><strong>Date:</strong> ${invoiceDate}</p>
-            <table>
-              <tr>
-                <th>Description</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-              </tr>
-              ${items.map(item => `
-                <tr>
-                  <td>${item.description}</td>
-                  <td>${item.qty}</td>
-                  <td>${item.price.toFixed(2)}</td>
-                  <td>${(item.qty * item.price).toFixed(2)}</td>
-                </tr>
-              `).join('')}
-              <tr>
-                <th colspan="3">Total</th>
-                <th>${total.toFixed(2)}</th>
-              </tr>
-            </table>
-            <p><strong>Notes:</strong></p>
-            <p>${notes}</p>
-          </body>
-        </html>
-      `;
+function addItem() {
+  const div = document.createElement('div');
+  div.className = 'invoice-item';
+  div.innerHTML = `
+    <input type="text" placeholder="Description">
+    <input type="number" placeholder="Qty" min="0">
+    <input type="number" placeholder="Price" min="0" step="0.01">
+    <button onclick="this.parentElement.remove()">Remove</button>
+  `;
+  itemsContainer.appendChild(div);
+}
 
-      const newTab = window.open();
-      newTab.document.write(html);
-      newTab.document.close();
-    }
-  </script>
+function saveInvoice() {
+  const clientName = document.getElementById('clientName').value;
+  const invoiceNumber = document.getElementById('invoiceNumber').value;
+  const invoiceDate = document.getElementById('invoiceDate').value;
+  const notes = document.getElementById('notes').value;
+  const status = document.getElementById('invoiceStatus').value;
+
+  const items = Array.from(document.querySelectorAll('.invoice-item'))
+    .map(item => {
+      const inputs = item.querySelectorAll('input');
+      return {
+        description: inputs[0].value,
+        qty: parseFloat(inputs[1].value) || 0,
+        price: parseFloat(inputs[2].value) || 0
+      };
+    })
+    .filter(item => item.description || item.qty > 0 || item.price > 0);
+
+  if(!clientName || !invoiceNumber || !invoiceDate) {
+    alert("Please fill client, invoice #, and date.");
+    return;
+  }
+
+  invoices.push({ clientName, invoiceNumber, invoiceDate, items, notes, status });
+  localStorage.setItem('invoices', JSON.stringify(invoices));
+
+  // Clear form
+  document.getElementById('clientName').value = '';
+  document.getElementById('invoiceNumber').value = '';
+  document.getElementById('invoiceDate').value = '';
+  document.getElementById('notes').value = '';
+  itemsContainer.innerHTML = '';
+  addItem();
+  renderInvoiceList();
+}
+
+function renderInvoiceList() {
+  const tbody = document.querySelector('#invoiceTable tbody');
+  tbody.innerHTML = '';
+  const filter = document.getElementById('filterStatus').value;
+
+  invoices.forEach((inv, index) => {
+    if(filter !== 'All' && inv.status !== filter) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${inv.invoiceNumber}</td>
+      <td>${inv.clientName}</td>
+      <td>${inv.invoiceDate}</td>
+      <td>${inv.status}</td>
+      <td>
+        <button onclick="openInvoice(${index})">Open</button>
+        <button onclick="markPaid(${index})">Mark Paid</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function openInvoice(index) {
+  const inv = invoices[index];
+  let total = inv.items.reduce((sum, item) => sum + item.qty * item.price, 0);
+  let html = `
+    <html>
+    <head>
+      <title>Invoice ${inv.invoiceNumber}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1, h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+        th { background: #eee; }
+      </style>
+    </head>
+    <body>
+      <img src="https://www.bawbawaerialservices.com.au/wp-content/uploads/2023/08/logo.png" style="max-width:200px; display:block; margin:auto;">
+      <h1>Invoice</h1>
+      <h2>Invoice #: ${inv.invoiceNumber}</h2>
+      <p><strong>Client:</strong> ${inv.clientName}</p>
+      <p><strong>Date:</strong> ${inv.invoiceDate}</p>
+      <p><strong>Status:</strong> ${inv.status}</p>
+      <table>
+        <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+        ${inv.items.map(item => `
+          <tr>
+            <td>${item.description}</td>
+            <td>${item.qty}</td>
+            <td>${item.price.toFixed(2)}</td>
+            <td>${(item.qty * item.price).toFixed(2)}</td>
+          </tr>`).join('')}
+        <tr>
+          <th colspan="3">Total</th>
+          <th>${total.toFixed(2)}</th>
+        </tr>
+      </table>
+      <p><strong>Notes:</strong></p>
+      <p>${inv.notes}</p>
+    </body>
+    </html>
+  `;
+  const newTab = window.open();
+  newTab.document.write(html);
+  newTab.document.close();
+}
+
+function markPaid(index) {
+  invoices[index].status = "Paid";
+  localStorage.setItem('invoices', JSON.stringify(invoices));
+  renderInvoiceList();
+}
+</script>
 </body>
 </html>
