@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Invoice Generator & Manager with Template</title>
+<title>Invoice Generator</title>
 <style>
   body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
   h1 { text-align: center; }
@@ -22,16 +22,27 @@
 <h1>Invoice Generator & Manager</h1>
 
 <div>
+  <h3>Upload Logo</h3>
+  <input type="file" id="logoInput" accept="image/*">
+  <img id="logoPreview" src="" style="max-width:200px; display:block; margin-bottom:10px;">
+
   <h3>Create Invoice</h3>
+  
+  <h4>Customer Details</h4>
   <label>Client Name:</label>
   <input type="text" id="clientName" placeholder="Client Name">
+  <label>Phone:</label>
+  <input type="text" id="clientPhone" placeholder="Client Phone">
+  <label>Email:</label>
+  <input type="email" id="clientEmail" placeholder="Client Email">
 
+  <h4>Invoice Details</h4>
   <label>Invoice Number:</label>
   <input type="text" id="invoiceNumber" placeholder="Invoice #">
-
-  <label>Date:</label>
+  <label>Invoice Date:</label>
   <input type="date" id="invoiceDate">
-
+  <label>Due Date:</label>
+  <input type="date" id="dueDate">
   <label>Status:</label>
   <select id="invoiceStatus">
     <option value="Unpaid">Unpaid</option>
@@ -39,11 +50,19 @@
     <option value="Overdue">Overdue</option>
   </select>
 
-  <h3>Items</h3>
+  <h4>Payee Details</h4>
+  <label>Company Name:</label>
+  <input type="text" id="payeeName" placeholder="Your Company Name">
+  <label>BSB:</label>
+  <input type="text" id="payeeBSB" placeholder="BSB">
+  <label>Account Number:</label>
+  <input type="text" id="payeeAccount" placeholder="Account Number">
+
+  <h4>Items</h4>
   <div id="items"></div>
   <button onclick="addItem()">Add Item</button>
 
-  <h3>Notes</h3>
+  <h4>Notes</h4>
   <textarea id="notes" placeholder="Additional notes..."></textarea>
 
   <br>
@@ -67,6 +86,7 @@
       <th>Invoice #</th>
       <th>Client</th>
       <th>Date</th>
+      <th>Due Date</th>
       <th>Status</th>
       <th>Actions</th>
     </tr>
@@ -74,46 +94,28 @@
   <tbody></tbody>
 </table>
 
-<hr>
-
-<h3>Invoice Template</h3>
-<p>You can edit HTML/CSS for your invoice template. Use placeholders: <code>{{clientName}}</code>, <code>{{invoiceNumber}}</code>, <code>{{invoiceDate}}</code>, <code>{{status}}</code>, <code>{{items}}</code>, <code>{{notes}}</code>, <code>{{total}}</code></p>
-<textarea id="invoiceTemplate" rows="15" placeholder="Enter template HTML/CSS here..."></textarea>
-<button onclick="saveTemplate()">Save Template</button>
-
 <script>
 let itemsContainer = document.getElementById('items');
 let invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-let template = localStorage.getItem('invoiceTemplate') || `
-<html>
-<head>
-<style>
-body { font-family: Arial, sans-serif; padding: 20px; }
-h1,h2{text-align:center;}
-table{width:100%;border-collapse: collapse;margin-top: 20px;}
-th,td{border:1px solid #000;padding:8px;text-align:left;}
-th{background:#eee;}
-</style>
-</head>
-<body>
-<img src="https://www.bawbawaerialservices.com.au/wp-content/uploads/2023/08/logo.png" style="max-width:200px;display:block;margin:auto;">
-<h1>Invoice</h1>
-<h2>Invoice #: {{invoiceNumber}}</h2>
-<p><strong>Client:</strong> {{clientName}}</p>
-<p><strong>Date:</strong> {{invoiceDate}}</p>
-<p><strong>Status:</strong> {{status}}</p>
-<table>
-<tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
-{{items}}
-<tr><th colspan="3">Total</th><th>{{total}}</th></tr>
-</table>
-<p><strong>Notes:</strong></p>
-<p>{{notes}}</p>
-</body>
-</html>
-`;
+let logoDataURL = localStorage.getItem('invoiceLogo') || "";
 
-document.getElementById('invoiceTemplate').value = template;
+// Show saved logo if exists
+const logoPreview = document.getElementById('logoPreview');
+if(logoDataURL) logoPreview.src = logoDataURL;
+
+// Handle logo upload
+document.getElementById('logoInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(evt){
+      logoDataURL = evt.target.result;
+      localStorage.setItem('invoiceLogo', logoDataURL);
+      logoPreview.src = logoDataURL;
+    }
+    reader.readAsDataURL(file);
+  }
+});
 
 // Auto add first item
 window.onload = () => { addItem(); renderInvoiceList(); }
@@ -132,10 +134,16 @@ function addItem() {
 
 function saveInvoice() {
   const clientName = document.getElementById('clientName').value;
+  const clientPhone = document.getElementById('clientPhone').value;
+  const clientEmail = document.getElementById('clientEmail').value;
   const invoiceNumber = document.getElementById('invoiceNumber').value;
   const invoiceDate = document.getElementById('invoiceDate').value;
+  const dueDate = document.getElementById('dueDate').value;
   const notes = document.getElementById('notes').value;
   const status = document.getElementById('invoiceStatus').value;
+  const payeeName = document.getElementById('payeeName').value;
+  const payeeBSB = document.getElementById('payeeBSB').value;
+  const payeeAccount = document.getElementById('payeeAccount').value;
 
   const items = Array.from(document.querySelectorAll('.invoice-item'))
     .map(item => {
@@ -148,27 +156,35 @@ function saveInvoice() {
     })
     .filter(item => item.description || item.qty > 0 || item.price > 0);
 
-  if(!clientName || !invoiceNumber || !invoiceDate) {
+  if(!clientName || !invoiceNumber || !invoiceDate){
     alert("Please fill client, invoice #, and date.");
     return;
   }
 
-  invoices.push({ clientName, invoiceNumber, invoiceDate, items, notes, status });
+  invoices.push({
+    clientName, clientPhone, clientEmail,
+    invoiceNumber, invoiceDate, dueDate,
+    notes, status,
+    payeeName, payeeBSB, payeeAccount,
+    items,
+    logo: logoDataURL
+  });
   localStorage.setItem('invoices', JSON.stringify(invoices));
 
+  // Clear form
   document.getElementById('clientName').value = '';
+  document.getElementById('clientPhone').value = '';
+  document.getElementById('clientEmail').value = '';
   document.getElementById('invoiceNumber').value = '';
   document.getElementById('invoiceDate').value = '';
+  document.getElementById('dueDate').value = '';
   document.getElementById('notes').value = '';
+  document.getElementById('payeeName').value = '';
+  document.getElementById('payeeBSB').value = '';
+  document.getElementById('payeeAccount').value = '';
   itemsContainer.innerHTML = '';
   addItem();
   renderInvoiceList();
-}
-
-function saveTemplate() {
-  const tpl = document.getElementById('invoiceTemplate').value;
-  localStorage.setItem('invoiceTemplate', tpl);
-  alert("Template saved!");
 }
 
 function renderInvoiceList() {
@@ -183,6 +199,7 @@ function renderInvoiceList() {
       <td>${inv.invoiceNumber}</td>
       <td>${inv.clientName}</td>
       <td>${inv.invoiceDate}</td>
+      <td>${inv.dueDate}</td>
       <td>${inv.status}</td>
       <td>
         <button onclick="openInvoice(${index})">Open</button>
@@ -195,18 +212,59 @@ function renderInvoiceList() {
 
 function openInvoice(index) {
   const inv = invoices[index];
-  const total = inv.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  let itemsHtml = inv.items.map(item => `<tr><td>${item.description}</td><td>${item.qty}</td><td>${item.price.toFixed(2)}</td><td>${(item.qty*item.price).toFixed(2)}</td></tr>`).join('');
+  const total = inv.items.reduce((sum, item) => sum + item.qty*item.price, 0);
+  const itemsHtml = inv.items.map(item => `
+    <tr>
+      <td>${item.description}</td>
+      <td>${item.qty}</td>
+      <td>${item.price.toFixed(2)}</td>
+      <td>${(item.qty*item.price).toFixed(2)}</td>
+    </tr>`).join('');
 
-  let html = template
-    .replaceAll('{{clientName}}', inv.clientName)
-    .replaceAll('{{invoiceNumber}}', inv.invoiceNumber)
-    .replaceAll('{{invoiceDate}}', inv.invoiceDate)
-    .replaceAll('{{status}}', inv.status)
-    .replaceAll('{{notes}}', inv.notes)
-    .replaceAll('{{items}}', itemsHtml)
-    .replaceAll('{{total}}', total.toFixed(2));
+  const html = `
+    <html>
+    <head>
+      <title>Invoice ${inv.invoiceNumber}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;}
+        h1,h2{text-align:center;}
+        table{width:100%;border-collapse:collapse;margin-top:20px;}
+        th,td{border:1px solid #000;padding:8px;text-align:left;}
+        th{background:#eee;}
+      </style>
+    </head>
+    <body>
+      ${inv.logo ? `<img src="${inv.logo}" style="max-width:200px; display:block; margin:auto;">` : ''}
+      <h1>Invoice</h1>
+      <h2>Invoice #: ${inv.invoiceNumber}</h2>
 
+      <h3>Customer Details</h3>
+      <p><strong>Name:</strong> ${inv.clientName}</p>
+      <p><strong>Phone:</strong> ${inv.clientPhone}</p>
+      <p><strong>Email:</strong> ${inv.clientEmail}</p>
+
+      <h3>Invoice Details</h3>
+      <p><strong>Date:</strong> ${inv.invoiceDate}</p>
+      <p><strong>Due Date:</strong> ${inv.dueDate}</p>
+      <p><strong>Status:</strong> ${inv.status}</p>
+
+      <h3>Payee Details</h3>
+      <p><strong>Company:</strong> ${inv.payeeName}</p>
+      <p><strong>BSB:</strong> ${inv.payeeBSB}</p>
+      <p><strong>Account Number:</strong> ${inv.payeeAccount}</p>
+
+      <h3>Items</h3>
+      <table>
+        <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+        ${itemsHtml}
+        <tr><th colspan="3">Total</th><th>${total.toFixed(2)}</th></tr>
+      </table>
+
+      <h3>Notes</h3>
+      <p>${inv.notes}</p>
+    </body>
+    </html>
+  `;
   const newTab = window.open();
   newTab.document.write(html);
   newTab.document.close();
@@ -218,6 +276,5 @@ function markPaid(index) {
   renderInvoiceList();
 }
 </script>
-
 </body>
 </html>
