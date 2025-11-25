@@ -139,6 +139,38 @@ function delInv(id){ if(confirm('Delete invoice?')){
 
 loadSavedFields();
 renderInvoices();
+
+function saveInvoice() {
+    const invoice = {
+        id: Date.now(),
+        status: document.getElementById('invoiceStatus').value,
+        clientName: document.getElementById('clientName').value,
+        clientPhone: document.getElementById('clientPhone').value,
+        clientEmail: document.getElementById('clientEmail').value,
+        payeeName: document.getElementById('payeeName').value,
+        payeeBSB: document.getElementById('payeeBSB').value,
+        payeeAccount: document.getElementById('payeeAccount').value,
+        payeeABN: document.getElementById('payeeABN').value,
+        invoiceNumber: document.getElementById('invoiceNumber').value,
+        invoiceDate: document.getElementById('invoiceDate').value,
+        invoiceNotes: document.getElementById('invoiceNotes').value,
+        dueDate: document.getElementById('dueDate').value,
+        logo: localStorage.getItem('uploadedLogo') || null,
+        items: Array.from(document.querySelectorAll('.invoice-item')).map(item => {
+            const i = item.querySelectorAll('input');
+            return {
+                description: i[0].value,
+                qty: parseFloat(i[1].value) || 0,
+                price: parseFloat(i[2].value) || 0
+            };
+        })
+    };
+    let invoices = JSON.parse(localStorage.getItem('invoiceList') || '[]');
+    invoices.push(invoice);
+    localStorage.setItem('invoiceList', JSON.stringify(invoices));
+    if (typeof loadInvoices === 'function') loadInvoices();
+    alert('Invoice saved!');
+}
 </script>
 </body>
 </html>
