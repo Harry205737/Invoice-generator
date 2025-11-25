@@ -1,175 +1,285 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Invoice App</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice Generator</title>
 <style>
-    body { font-family: Arial; margin: 20px; }
-    .row { display: flex; justify-content: space-between; }
-    .col { width: 48%; }
-    .invoice-list-item { border: 1px solid #ccc; padding: 10px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; }
-    .status-paid { background: #c8f7c5; }
-    .status-unpaid { background: #fff7b3; }
-    .status-overdue { background: #f7c5c5; }
+body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
+h1 { text-align: center; }
+input, textarea, select { width: 100%; margin: 5px 0 10px; padding: 8px; box-sizing: border-box; }
+button { padding: 6px 12px; margin: 2px; cursor: pointer; }
+.invoice-item { display: flex; gap: 10px; margin-bottom: 8px; }
+.invoice-item input { flex: 1; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
+th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+th { background: #eee; }
+hr { margin: 25px 0; }
+.flex-row { display: flex; justify-content: space-between; gap: 20px; }
+.flex-column { flex: 1; }
+#logoPreview { max-width:150px; display:block; margin-bottom:10px; }
+
+/* Status colours */
+.status-paid { background-color: #c8f7c5; }
+.status-unpaid { background-color: #fff5b0; }
+.status-overdue { background-color: #f7c5c5; }
 </style>
 </head>
 <body>
-<h2><img id="logoPreview" src="" height="60" style="vertical-align:middle"> &nbsp; <input type="file" id="logoUpload" accept="image/*"> <span style="float:right;font-size:40px;font-weight:bold;">INVOICE</span></h2>
 
-<div class="row">
-    <div class="col">
-        <h3>Client Details</h3>
-        <input id="clientName" placeholder="Client Name"><br>
-        <input id="clientEmail" placeholder="Client Email"><br>
-        <input id="clientPhone" placeholder="Client Phone"><br>
-        <textarea id="clientAddress" placeholder="Client Address"></textarea>
-    </div>
-    <div class="col">
-        <h3>Payee Details</h3>
-        <input id="payeeName" placeholder="Your Name"><br>
-        <input id="payeeBSB" placeholder="BSB"><br>
-        <input id="payeeAccount" placeholder="Account Number"><br>
-        <input id="payeeABN" placeholder="ABN"><br>
-        <textarea id="payeeAddress" placeholder="Your Address"></textarea>
-    </div>
+<h1>Invoice Generator</h1>
+
+<h3>Upload Logo</h3>
+<input type="file" id="logoInput" accept="image/*">
+<img id="logoPreview">
+
+<h3>Create Invoice</h3>
+
+<div class="flex-row">
+  <div class="flex-column">
+    <h4>Client Details</h4>
+    <input type="text" id="clientName" placeholder="Client Name">
+    <input type="text" id="clientPhone" placeholder="Phone">
+    <input type="email" id="clientEmail" placeholder="Email">
+  </div>
+  <div class="flex-column">
+    <h4>Payee Details</h4>
+    <input type="text" id="payeeName" placeholder="Company Name">
+    <input type="text" id="payeeBSB" placeholder="BSB">
+    <input type="text" id="payeeAccount" placeholder="Account Number">
+    <input type="text" id="payeeABN" placeholder="ABN">
+  </div>
 </div>
 
-<h3>Invoice Info</h3>
-<input id="invoiceNumber" placeholder="Invoice Number"><br>
-<input id="invoiceDate" type="date"><br>
-<input id="dueDate" type="date"><br>
-<textarea id="invoiceNotes" placeholder="Notes"></textarea>
+<h4>Invoice Details</h4>
+<input type="text" id="invoiceNumber" placeholder="Invoice #">
+<input type="date" id="invoiceDate">
+<input type="date" id="dueDate">
+<select id="invoiceStatus">
+  <option value="Unpaid">Unpaid</option>
+  <option value="Paid">Paid</option>
+  <option value="Overdue">Overdue</option>
+</select>
 
-<h3>Items</h3>
+<h4>Items</h4>
 <div id="items"></div>
 <button onclick="addItem()">Add Item</button>
 
-<br><br>
-<select id="invoiceStatus">
-    <option value="unpaid">Unpaid</option>
-    <option value="paid">Paid</option>
-</select>
+<h4>Notes</h4>
+<textarea id="notes" placeholder="Additional notes..."></textarea>
+<br>
 <button onclick="saveInvoice()">Save Invoice</button>
-<button onclick="openInvoiceTab()">Open Invoice</button>
 
 <hr>
-<h3>Invoices</h3>
-<select id="filter" onchange="renderInvoices()">
-    <option value="all">All</option>
-    <option value="paid">Paid</option>
-    <option value="unpaid">Unpaid</option>
-    <option value="overdue">Overdue</option>
+<h3>Invoice List</h3>
+<label>Filter by Status:</label>
+<select id="filterStatus" onchange="renderInvoiceList()">
+  <option value="All">All</option>
+  <option value="Paid">Paid</option>
+  <option value="Unpaid">Unpaid</option>
+  <option value="Overdue">Overdue</option>
 </select>
-<div id="invoiceList"></div>
+
+<table id="invoiceTable">
+  <thead>
+    <tr>
+      <th>Invoice #</th>
+      <th>Client</th>
+      <th>Date</th>
+      <th>Due Date</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
-let savedFields = ['payeeName','payeeBSB','payeeAccount','payeeABN','invoiceNumber','invoiceDate','invoiceNotes'];
+let itemsContainer = document.getElementById("items");
+let invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
 
-function loadSavedFields(){
-  savedFields.forEach(id=>{ let v=localStorage.getItem(id); if(v!==null) document.getElementById(id).value=v; });
-  let logo = localStorage.getItem('logo'); if(logo) document.getElementById('logoPreview').src = logo;
-}
-function saveField(id){ localStorage.setItem(id, document.getElementById(id).value); }
+// LOGO LOADING
+let logoDataURL = localStorage.getItem("invoiceLogo") || "";
+document.getElementById("logoPreview").src = logoDataURL;
 
-['logoUpload'].forEach(id=>{
-  document.getElementById(id).addEventListener('change',e=>{
-    let file=e.target.files[0]; let r=new FileReader();
-    r.onload=(ev)=>{ localStorage.setItem('logo',ev.target.result); document.getElementById('logoPreview').src=ev.target.result; }
-    if(file) r.readAsDataURL(file);
-  });
-});
-
-savedFields.forEach(id=>{
-  document.getElementById(id).addEventListener('input',()=>saveField(id));
-});
-
-function addItem(){
-  let d=document.createElement('div');
-  d.innerHTML = '<input class="desc" placeholder="Description"> <input class="amt" type="number" placeholder="Amount">';
-  document.getElementById('items').appendChild(d);
-}
-
-function saveInvoice(){
-  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
-  let obj={
-    id: Date.now(),
-    client:{name:clientName.value,email:clientEmail.value,phone:clientPhone.value,address:clientAddress.value},
-    payee:{name:payeeName.value,bsb:payeeBSB.value,acc:payeeAccount.value,abn:payeeABN.value,address:payeeAddress.value},
-    meta:{number:invoiceNumber.value,date:invoiceDate.value,due:dueDate.value,notes:invoiceNotes.value,status:invoiceStatus.value},
-    items:[...document.querySelectorAll('#items div')].map(el=>({d:el.querySelector('.desc').value,a:el.querySelector('.amt').value}))
-  };
-  inv.push(obj);
-  localStorage.setItem('invoices',JSON.stringify(inv));
-  renderInvoices();
-}
-
-function renderInvoices(){
-  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
-  let f = filter.value;
-  let out='';
-  let now = new Date().toISOString().split('T')[0];
-
-  inv.forEach(x=>{
-    let status = x.meta.status;
-    if(x.meta.due && x.meta.due < now && status!=='paid') status='overdue';
-    if(f!=='all' && status!==f) return;
-
-    let cls = status==='paid'?'status-paid':status==='overdue'?'status-overdue':'status-unpaid';
-    out += `<div class="invoice-list-item ${cls}">#${x.meta.number} - ${x.client.name}
-      <button onclick="openSpecific(${x.id})">Open</button>
-      <button onclick="delInv(${x.id})">Delete</button></div>`;
-  });
-  invoiceList.innerHTML = out;
-}
-
-function openSpecific(id){
-  let inv = JSON.parse(localStorage.getItem('invoices')||'[]').find(x=>x.id===id);
-  let w=window.open();
-  w.document.write('<pre>'+JSON.stringify(inv,null,2)+'</pre>');
-}
-
-function openInvoiceTab(){ openSpecific(); }
-
-function delInv(id){ if(confirm('Delete invoice?')){
-  let inv = JSON.parse(localStorage.getItem('invoices')||'[]');
-  inv = inv.filter(x=>x.id!==id);
-  localStorage.setItem('invoices',JSON.stringify(inv));
-  renderInvoices();
-}}
-
-loadSavedFields();
-renderInvoices();
-
-function saveInvoice() {
-    const invoice = {
-        id: Date.now(),
-        status: document.getElementById('invoiceStatus').value,
-        clientName: document.getElementById('clientName').value,
-        clientPhone: document.getElementById('clientPhone').value,
-        clientEmail: document.getElementById('clientEmail').value,
-        payeeName: document.getElementById('payeeName').value,
-        payeeBSB: document.getElementById('payeeBSB').value,
-        payeeAccount: document.getElementById('payeeAccount').value,
-        payeeABN: document.getElementById('payeeABN').value,
-        invoiceNumber: document.getElementById('invoiceNumber').value,
-        invoiceDate: document.getElementById('invoiceDate').value,
-        invoiceNotes: document.getElementById('invoiceNotes').value,
-        dueDate: document.getElementById('dueDate').value,
-        logo: localStorage.getItem('uploadedLogo') || null,
-        items: Array.from(document.querySelectorAll('.invoice-item')).map(item => {
-            const i = item.querySelectorAll('input');
-            return {
-                description: i[0].value,
-                qty: parseFloat(i[1].value) || 0,
-                price: parseFloat(i[2].value) || 0
-            };
-        })
+document.getElementById("logoInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = evt => {
+      logoDataURL = evt.target.result;
+      localStorage.setItem("invoiceLogo", logoDataURL);
+      document.getElementById("logoPreview").src = logoDataURL;
     };
-    let invoices = JSON.parse(localStorage.getItem('invoiceList') || '[]');
-    invoices.push(invoice);
-    localStorage.setItem('invoiceList', JSON.stringify(invoices));
-    if (typeof loadInvoices === 'function') loadInvoices();
-    alert('Invoice saved!');
+    reader.readAsDataURL(file);
+  }
+});
+
+window.onload = () => {
+  addItem();
+  renderInvoiceList();
+};
+
+// ADD ITEM
+function addItem() {
+  const div = document.createElement("div");
+  div.className = "invoice-item";
+  div.innerHTML = `
+    <input type="text" placeholder="Description">
+    <input type="number" placeholder="Qty" min="0">
+    <input type="number" placeholder="Price" min="0" step="0.01">
+    <button onclick="this.parentElement.remove()">Remove</button>
+  `;
+  itemsContainer.appendChild(div);
+}
+
+// SAVE INVOICE
+function saveInvoice() {
+  const inv = {
+    clientName: clientName.value,
+    clientPhone: clientPhone.value,
+    clientEmail: clientEmail.value,
+    invoiceNumber: invoiceNumber.value,
+    invoiceDate: invoiceDate.value,
+    dueDate: dueDate.value,
+    notes: notes.value,
+    status: invoiceStatus.value,
+    payeeName: payeeName.value,
+    payeeBSB: payeeBSB.value,
+    payeeAccount: payeeAccount.value,
+    payeeABN: payeeABN.value,
+    logo: logoDataURL,
+    items: Array.from(document.querySelectorAll(".invoice-item")).map(item => {
+      const inputs = item.querySelectorAll("input");
+      return {
+        description: inputs[0].value,
+        qty: parseFloat(inputs[1].value) || 0,
+        price: parseFloat(inputs[2].value) || 0
+      };
+    })
+  };
+
+  if (!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate) {
+    alert("Please fill in Client Name, Invoice Number and Invoice Date");
+    return;
+  }
+
+  invoices.push(inv);
+  localStorage.setItem("invoices", JSON.stringify(invoices));
+
+  // RESET FORM
+  document.querySelectorAll("input, textarea").forEach(e => (e.value = ""));
+  itemsContainer.innerHTML = "";
+  addItem();
+
+  renderInvoiceList();
+}
+
+// AUTO STATUS + LIST
+function renderInvoiceList() {
+  const tbody = document.querySelector("#invoiceTable tbody");
+  tbody.innerHTML = "";
+  const filter = document.getElementById("filterStatus").value;
+  const today = new Date().toISOString().split("T")[0];
+
+  invoices.forEach((inv, index) => {
+    // AUTO OVERDUE CALCULATION
+    if (inv.status !== "Paid" && inv.dueDate && inv.dueDate < today) {
+      inv.status = "Overdue";
+    }
+
+    // FILTER
+    if (filter !== "All" && inv.status !== filter) return;
+
+    let statusClass =
+      inv.status === "Paid"
+        ? "status-paid"
+        : inv.status === "Overdue"
+        ? "status-overdue"
+        : "status-unpaid";
+
+    const tr = document.createElement("tr");
+    tr.className = statusClass;
+    tr.innerHTML = `
+      <td>${inv.invoiceNumber}</td>
+      <td>${inv.clientName}</td>
+      <td>${inv.invoiceDate}</td>
+      <td>${inv.dueDate}</td>
+      <td>${inv.status}</td>
+      <td>
+        <button onclick="openInvoice(${index})">Open</button>
+        <button onclick="markPaid(${index})">Mark Paid</button>
+        <button onclick="deleteInvoice(${index})">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  localStorage.setItem("invoices", JSON.stringify(invoices));
+}
+
+// OPEN INVOICE IN NEW TAB
+function openInvoice(index) {
+  const inv = invoices[index];
+  const total = inv.items.reduce((sum, i) => sum + i.qty * i.price, 0);
+  const itemsHtml = inv.items
+    .map(
+      i => `<tr><td>${i.description}</td><td>${i.qty}</td><td>${i.price}</td><td>${(
+        i.qty * i.price
+      ).toFixed(2)}</td></tr>`
+    )
+    .join("");
+
+  const html = `
+    <html><head><title>Invoice ${inv.invoiceNumber}</title>
+    <style>
+      body{font-family:Arial;padding:20px;}
+      table{width:100%;border-collapse:collapse;margin-top:20px;}
+      th,td{border:1px solid #000;padding:6px;}
+      th{background:#eee;}
+    </style>
+    </head>
+    <body>
+      ${inv.logo ? `<img src="${inv.logo}" style="max-width:200px;">` : ""}
+      <h1>Invoice ${inv.invoiceNumber}</h1>
+      <h3>Client</h3>
+      <p>${inv.clientName}<br>${inv.clientPhone}<br>${inv.clientEmail}</p>
+
+      <h3>Payee</h3>
+      <p>${inv.payeeName}<br>BSB: ${inv.payeeBSB}<br>Acc: ${inv.payeeAccount}<br>ABN: ${inv.payeeABN}</p>
+
+      <h3>Details</h3>
+      <p>Date: ${inv.invoiceDate}<br>Due: ${inv.dueDate}<br>Status: ${inv.status}</p>
+
+      <table>
+        <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+        ${itemsHtml}
+        <tr><th colspan="3">Total</th><th>${total.toFixed(2)}</th></tr>
+      </table>
+
+      <h3>Notes</h3>
+      <p>${inv.notes}</p>
+    </body></html>`;
+
+  const win = window.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+// MARK PAID
+function markPaid(index) {
+  invoices[index].status = "Paid";
+  localStorage.setItem("invoices", JSON.stringify(invoices));
+  renderInvoiceList();
+}
+
+// DELETE
+function deleteInvoice(index) {
+  if (confirm("Delete invoice?")) {
+    invoices.splice(index, 1);
+    localStorage.setItem("invoices", JSON.stringify(invoices));
+    renderInvoiceList();
+  }
 }
 </script>
 </body>
