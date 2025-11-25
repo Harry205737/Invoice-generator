@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Invoice Manager — Single File App</title>
+  <style>
+    :root{--bg:#f6f8fa;--card:#fff;--accent:#0b69ff;--muted:#6b7280;--danger:#ef4444}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg);margin:0;color:#111}
+    .app{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:10px;box-shadow:0 6px 18px rgba(11,105,255,0.06);padding:14px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:14px}
+    form .row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    label{font-size:12px;color:var(--muted);min-width:80px}
+    input[type=text], input[type=date], input[type=number], select, textarea{flex:1;padding:8px;border-radius:8px;border:1px solid #e6e9ee}
+    button{background:var(--accent);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid rgba(11,105,255,0.12)}
+    .items table{width:100%;border-collapse:collapse}
+    .items th, .items td{padding:6px 8px;text-align:left;border-bottom:1px solid #f1f5f9}
+    .items input{width:100%;box-sizing:border-box}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .list{max-height:560px;overflow:auto;margin-top:12px}
+    .invoice-row{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:8px;border:1px solid #eef2ff}
+    .badge{padding:6px 8px;border-radius:999px;font-size:12px}
+    .paid{background:#ddf0e9;color:#036b35}
+    .unpaid{background:#fff6f6;color:var(--danger)}
+    .summary{display:flex;flex-direction:column;gap:8px}
+    .muted{color:var(--muted);font-size:13px}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr;}.card{padding:10px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Invoice Manager</h1>
+      <div class="controls">
+        <button id="exportCsv">Export CSV</button>
+        <button id="printBtn" class="ghost">Print</button>
+        <button id="clearAll" class="ghost">Clear All</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <form id="invoiceForm">
+            <div style="display:flex;gap:10px;margin-bottom:10px;">
+              <input type="text" id="client" placeholder="Client name" required />
+              <input type="date" id="date" />
+            </div>
+            <div class="row"><label>Invoice #</label><input type="text" id="number" placeholder="Auto or custom"/></div>
+            <div class="row"><label>Due</label><input type="date" id="due"/></div>
+            <div style="margin-top:8px" class="items">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <strong>Items</strong>
+                <button type="button" id="addItem" class="ghost">+ Add item</button>
+              </div>
+              <table id="itemsTable">
+                <thead><tr><th style="width:45%">Description</th><th style="width:15%">Qty</th><th style="width:20%">Price</th><th style="width:20%">Total</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="row" style="justify-content:flex-end;margin-top:10px">
+              <div style="width:300px">
+                <div class="row"><label>Tax (%)</label><input type="number" id="tax" value="0" min="0"/></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px"><div class="muted">Subtotal</div><div id="subtotal">$0.00</div></div>
+                <div style="display:flex;justify-content:space-between"><div class="muted">Tax</div><div id="taxAmt">$0.00</div></div>
+                <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px"><div>Total</div><div id="total">$0.00</div></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+              <button type="submit">Save Invoice</button>
+              <button type="button" id="saveDraft" class="ghost">Save Draft</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong>Invoices</strong>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="search" placeholder="Search client or #" />
+              <select id="filter">
+                <option value="all">All</option>
+                <option value="paid">Paid</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
+          <div class="list" id="invoiceList"></div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="card summary">
+          <div><strong>Summary</strong></div>
+          <div class="muted">Total invoices <span id="count">0</span></div>
+          <div class="muted">Total outstanding <span id="outstanding">$0.00</span></div>
+          <div class="muted">Total paid <span id="paidTotal">$0.00</span></div>
+          <hr/>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button id="newInvoice" class="ghost">New Invoice</button>
+            <button id="downloadSample">Download Sample CSV</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Saved locally in your browser. No server required.</footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'invoices_v1';
+    let invoices = [];
+    const $ = (sel) => document.querySelector(sel);
+    function fmt(n){return '$' + Number(n||0).toFixed(2)}
+    function uid(){return 'inv-' + Date.now()}
+
+    function load(){
+      try{invoices = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');}catch(e){invoices = []}
+    }
+    function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));renderList();renderSummary();}
+
+    const itemsTbody = document.querySelector('#itemsTable tbody');
+    function addItemRow(it={desc:'',qty:1,price:0}){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input data-field="desc" value="${it.desc}" placeholder="Description"></td>
+        <td><input type="number" data-field="qty" min="0" value="${it.qty}"></td>
+        <td><input type="number" data-field="price" min="0" step="0.01" value="${it.price}"></td>
+        <td class="row-total">${fmt(it.qty * it.price)}</td>`;
+      itemsTbody.appendChild(tr);
+      tr.querySelectorAll('input').forEach(inp=>inp.addEventListener('input', updateTotals));
+      updateTotals(); }
+
+    function clearItems(){ itemsTbody.innerHTML=''; }
+
+    function updateTotals(){
+      let subtotal = 0;
+      Array.from(itemsTbody.querySelectorAll('tr')).forEach(r=>{
+        const q = Number(r.querySelector('[data-field=qty]').value||0);
+        const p = Number(r.querySelector('[data-field=price]').value||0);
+        const line = q*p;
+        subtotal += line;
+        r.querySelector('.row-total').textContent = fmt(line);
+      });
+      const taxPct = Number($('#tax').value||0);
+      const taxAmt = subtotal*taxPct/100;
+      $('#subtotal').textContent = fmt(subtotal);
+      $('#taxAmt').textContent = fmt(taxAmt);
+      $('#total').textContent = fmt(subtotal+tax
