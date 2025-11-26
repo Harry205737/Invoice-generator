@@ -1,4 +1,3 @@
-<!-- Single-file Invoice App — restored functionality: add items, save, list, logo, due date, open template -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,8 +9,8 @@
   h1{margin-top:0}
   input,textarea,select{width:100%;padding:8px;margin:6px 0;box-sizing:border-box}
   button{padding:8px 10px;margin:6px 4px;cursor:pointer}
-  .flex{display:flex;gap:16px}
-  .col{flex:1}
+  .flex{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:250px}
   table{width:100%;border-collapse:collapse;background:#fff}
   th,td{border:1px solid #ddd;padding:8px}
   th{background:#f0f0f0}
@@ -60,6 +59,7 @@
   <option value="Paid">Paid</option>
   <option value="Overdue">Overdue</option>
 </select>
+<label><input type="checkbox" id="includeGST" checked> Include GST (10%)</label>
 
 <h3>Items</h3>
 <table id="itemsTable">
@@ -96,7 +96,6 @@ const logoPreview = document.getElementById('logoPreview');
 logoPreview.src = logoDataURL;
 
 function saveToStorage(){ localStorage.setItem('invoices', JSON.stringify(invoices)); }
-
 function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
 
 // --- Logo upload ---
@@ -123,7 +122,6 @@ function addItemRow(desc='', qty=1, unit=0){
     <td><button class="remove">Remove</button></td>`;
   itemsBody.appendChild(tr);
 
-  // attach remove handler and live total calc
   tr.querySelector('.remove').addEventListener('click', ()=>tr.remove());
   const qtyInput = tr.querySelector('.it-qty');
   const unitInput = tr.querySelector('.it-unit');
@@ -140,7 +138,6 @@ document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow()
 
 // --- Save invoice ---
 function saveInvoice(){
-  // gather items
   const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
     const desc = r.querySelector('.it-desc').value || '';
     const qty = parseFloat(r.querySelector('.it-qty').value)||0;
@@ -164,12 +161,12 @@ function saveInvoice(){
     invoiceDate: document.getElementById('invoiceDate').value || new Date().toISOString().split('T')[0],
     dueDate: document.getElementById('dueDate').value || '',
     status: document.getElementById('invoiceStatus').value || 'Unpaid',
+    includeGST: document.getElementById('includeGST').checked,
     notes: document.getElementById('notes').value || '',
     logo: logoDataURL,
     items: items
   };
 
-  // basic validation
   if(!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate){
     alert('Please fill Client name, Invoice number and Invoice date');
     return;
@@ -187,6 +184,7 @@ function saveInvoice(){
   document.getElementById('invoiceDate').value='';
   document.getElementById('dueDate').value='';
   document.getElementById('notes').value='';
+  document.getElementById('includeGST').checked = true;
   itemsBody.innerHTML=''; addItemRow();
 
   renderInvoiceList();
@@ -202,7 +200,6 @@ function renderInvoiceList(){
   const today = new Date().toISOString().split('T')[0];
 
   invoices.forEach((inv, idx)=>{
-    // auto overdue if not paid
     if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < today) inv.status = 'Overdue';
     if(filter !== 'All' && inv.status !== filter) return;
 
@@ -223,7 +220,6 @@ function renderInvoiceList(){
   });
   saveToStorage();
 
-  // attach handlers
   document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(Number(e.currentTarget.dataset.idx))));
   document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>{ invoices[Number(e.currentTarget.dataset.idx)].status='Paid'; saveToStorage(); renderInvoiceList(); }));
   document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{ if(confirm('Delete invoice?')){ invoices.splice(Number(e.currentTarget.dataset.idx),1); saveToStorage(); renderInvoiceList(); }}));
@@ -235,7 +231,7 @@ document.getElementById('filterStatus').addEventListener('change', renderInvoice
 function openInvoice(i){
   const inv = invoices[i];
   const subtotal = inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
-  const gst = subtotal * 0.10;
+  const gst = inv.includeGST ? subtotal * 0.10 : 0;
   const total = subtotal + gst;
 
   const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
@@ -247,7 +243,9 @@ function openInvoice(i){
     + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Pay To:</strong> ${escapeHtml(inv.payeeName||'')}<br><strong>BSB:</strong> ${escapeHtml(inv.payeeBSB||'')}<br><strong>Account:</strong> ${escapeHtml(inv.payeeAccount||'')}</div></div></div>`
     + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
     + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
-    + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div><div>GST (10%): ${formatCurrency(gst)}</div><div style="font-weight:bold">Total: ${formatCurrency(total)}</div></div>`
+    + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
+    + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
+    + `<div style="font-weight:bold">Total: ${formatCurrency(total)}</div></div>`
     + `<div class="msg">${escapeHtml(inv.notes)}</div>`
     + `<div class="disclaimer">Please note that the full-quality files from Baw Baw Aerial Services will only be delivered upon receipt of full payment. Until the payment is received, files provided will be watermarked and of reduced quality for preview purposes only. We kindly request timely settlement to ensure the prompt delivery of the final high-resolution files. Thank you for your business.<br><br>All services must be paid within 14 days. A late fee may apply.</div>`
     + `<div style="margin-top:30px">www.bawbawaerialservices.com.au • bawbawaerialservices@gmail.com</div></body></html>`;
@@ -259,38 +257,20 @@ function openInvoice(i){
 
 // --- Utilities ---
 function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function generateInvoiceNumber(){
-  let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10);
-  last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last);
-}
+function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
 
 // --- Init ---
 (function init(){
-  // fill payee from storage if present
-  document.getElementById('payeeName').value = localStorage.getItem('payeeName')||'Baw Baw Aerial Services';
-  document.getElementById('payeeABN').value = localStorage.getItem('payeeABN')||'';
-  document.getElementById('payeeAddress').value = localStorage.getItem('payeeAddress')||'';
-  document.getElementById('payeePhone').value = localStorage.getItem('payeePhone')||'';
-  document.getElementById('payeeEmail').value = localStorage.getItem('payeeEmail')||'';
-  document.getElementById('payeeBSB').value = localStorage.getItem('payeeBSB')||'';
-  document.getElementById('payeeAccount').value = localStorage.getItem('payeeAccount')||'';
-
-  if(logoDataURL) logoPreview.src = logoDataURL;
-
-  // if there are invoices saved, render
-  renderInvoiceList();
-
-  // start with one empty item
-  if(itemsBody.children.length===0) addItemRow();
-
-  // save payee details on change so they persist
   ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
     const el = document.getElementById(id);
+    el.value = localStorage.getItem(id)||el.value;
     el.addEventListener('change',()=> localStorage.setItem(id, el.value));
   });
-})();
 
+  if(logoDataURL) logoPreview.src = logoDataURL;
+  renderInvoiceList();
+  if(itemsBody.children.length===0) addItemRow();
+})();
 </script>
 </body>
 </html>
