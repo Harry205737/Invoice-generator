@@ -32,7 +32,7 @@
            <h3 class="text-xl font-semibold text-indigo-800">☁️ Cloud Access (Firebase Authentication)</h3>
            <p class="text-sm">Status: <strong id="login-status" class="font-medium text-red-600">Checking status...</strong></p>
            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-               <input type="email" id="loginEmail" placeholder="Email" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
+               <input type="email" id="loginEmail" placeholder="Email (e.g., your@email.com)" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
                <input type="password" id="loginPassword" placeholder="Password" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
                <button onclick="loginUser()" class="bg-indigo-600 text-white p-2 rounded-lg font-medium hover:bg-indigo-700 transition">Log In</button>
                <button onclick="logoutUser()" class="bg-gray-400 text-white p-2 rounded-lg font-medium hover:bg-gray-500 transition">Log Out</button>
@@ -156,6 +156,7 @@
    <script type="module">
        // =========================================================================
        // FIREBASE V9 MODULAR SDK IMPORTS
+       // NOTE: The 'doc' function is now imported to correctly reference single documents.
        // =========================================================================
        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
        import {
@@ -174,7 +175,8 @@
          addDoc,
          updateDoc,
          deleteDoc,
-         serverTimestamp
+         serverTimestamp,
+         doc // <-- CORRECTED IMPORT
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
        // =========================================================================
@@ -189,8 +191,7 @@
          appId: "1:47773331214:web:6d9066b2e6b1f29cb3715f",
          measurementId: "G-0GWKMR09EN"
        };
-       // NOTE: measurementId is for analytics and not strictly needed for auth/db
-
+       
        // Initialize Firebase services
        const app = initializeApp(firebaseConfig);
        const auth = getAuth(app);
@@ -375,7 +376,6 @@
            let q = query(collection(db, 'invoices'),
                        where('userId', '==', userId)
                    );
-           // Firestore doesn't support orderBy() on the primary query, but we can sort client-side easily.
            
            const snapshot = await getDocs(q);
            
@@ -436,23 +436,27 @@
        // --- Cloud Actions (Update/Delete) ---
        async function updateInvoiceStatus(id, newStatus){
          try {
-           const invoiceRef = collection(db, 'invoices', id);
+           // CORRECTED: Use doc() to get a reference to a single document
+           const invoiceRef = doc(db, 'invoices', id);
            await updateDoc(invoiceRef, { status: newStatus });
+           alert('Invoice status updated successfully!');
            await loadInvoicesAndRender();
          } catch(e) {
            console.error("Error updating document: ", e);
-           alert('Failed to update status. Make sure the document ID is valid.');
+           alert('Failed to update status. Please check the console for details, and ensure your Firebase Security Rules allow updates.');
          }
        }
 
        async function deleteInvoice(id){
          try {
-           const invoiceRef = collection(db, 'invoices', id);
+           // CORRECTED: Use doc() to get a reference to a single document
+           const invoiceRef = doc(db, 'invoices', id);
            await deleteDoc(invoiceRef);
+           alert('Invoice deleted successfully!');
            await loadInvoicesAndRender();
          } catch(e) {
            console.error("Error deleting document: ", e);
-           alert('Failed to delete invoice.');
+           alert('Failed to delete invoice. Please check the console for details, and ensure your Firebase Security Rules allow deletions.');
          }
        }
 
@@ -516,6 +520,7 @@
 
          signInWithEmailAndPassword(auth, email, password)
            .then((userCredential) => {
+             // Success. The onAuthStateChanged listener handles the UI update.
              alert("Logged in successfully!");
            })
            .catch((error) => {
