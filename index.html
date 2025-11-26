@@ -1,3 +1,4 @@
+<!-- Full integrated single-file invoice app with professional template -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,311 +6,160 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Invoice Generator</title>
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
-h1 { text-align: center; }
-input, textarea, select { width: 100%; margin: 5px 0 10px; padding: 8px; box-sizing: border-box; }
-button { padding: 6px 12px; margin: 2px; cursor: pointer; }
-.invoice-item { display: flex; gap: 10px; margin-bottom: 8px; }
-.invoice-item input { flex: 1; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
-th, td { border: 1px solid #000; padding: 6px; text-align: left; }
-th { background: #eee; }
-hr { margin: 25px 0; }
-.flex-row { display: flex; justify-content: space-between; gap: 20px; }
-.flex-column { flex: 1; }
-#logoPreview { max-width:150px; display:block; margin-bottom:10px; }
-
-/* Status colours */
-.status-paid { background-color: #c8f7c5; }
-.status-unpaid { background-color: #fff5b0; }
-.status-overdue { background-color: #f7c5c5; }
+body { font-family: Arial, sans-serif; padding: 20px; }
+input, textarea { width: 100%; margin: 5px 0; padding: 6px; }
+button { padding: 10px; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #ddd; padding: 8px; }
 </style>
 </head>
 <body>
+<h2>Invoice Generator</h2>
 
-<h1>Invoice Generator</h1>
+<label>Invoice Number</label>
+<input id="invoice-number">
 
-<h3>Upload Logo</h3>
-<input type="file" id="logoInput" accept="image/*">
-<img id="logoPreview">
+<label>Date</label>
+<input id="invoice-date" type="date">
 
-<h3>Create Invoice</h3>
+<label>ABN</label>
+<input id="abn">
 
-<div class="flex-row">
-  <div class="flex-column">
-    <h4>Client Details</h4>
-    <input type="text" id="clientName" placeholder="Client Name">
-    <input type="text" id="clientPhone" placeholder="Phone">
-    <input type="email" id="clientEmail" placeholder="Email">
-  </div>
-  <div class="flex-column">
-    <h4>Payee Details</h4>
-    <input type="text" id="payeeName" placeholder="Company Name">
-    <input type="text" id="payeeBSB" placeholder="BSB">
-    <input type="text" id="payeeAccount" placeholder="Account Number">
-    <input type="text" id="payeeABN" placeholder="ABN">
-  </div>
-</div>
+<label>Business Address</label>
+<input id="business-address">
 
-<h4>Invoice Details</h4>
-<input type="text" id="invoiceNumber" placeholder="Invoice #" readonly>
-<input type="date" id="invoiceDate">
-<input type="date" id="dueDate">
-<select id="invoiceStatus">
-  <option value="Unpaid">Unpaid</option>
-  <option value="Paid">Paid</option>
-  <option value="Overdue">Overdue</option>
-</select>
+<label>Phone</label>
+<input id="phone">
 
-<h4>Items</h4>
-<div id="items"></div>
-<button onclick="addItem()">Add Item</button>
+<label>Email</label>
+<input id="email">
 
-<h4>Notes</h4>
-<textarea id="notes" placeholder="Additional notes..."></textarea>
-<br>
-<button onclick="saveInvoice()">Save Invoice</button>
+<label>Bank Name</label>
+<input id="bank-name">
 
-<hr>
-<h3>Invoice List</h3>
-<label>Filter by Status:</label>
-<select id="filterStatus" onchange="renderInvoiceList()">
-  <option value="All">All</option>
-  <option value="Paid">Paid</option>
-  <option value="Unpaid">Unpaid</option>
-  <option value="Overdue">Overdue</option>
-</select>
+<label>BSB</label>
+<input id="bsb">
 
-<table id="invoiceTable">
-  <thead>
-    <tr>
-      <th>Invoice #</th>
-      <th>Client</th>
-      <th>Date</th>
-      <th>Due Date</th>
-      <th>Status</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
+<label>Account Number</label>
+<input id="account-number">
+
+<h3>Invoice Items</h3>
+<table id="items-table">
+<thead>
+<tr><th>Description</th><th>Qty</th><th>Unit Price</th></tr>
+</thead>
+<tbody id="item-body">
+<tr class="item-row">
+<td><input class="desc"></td>
+<td><input class="qty" type="number" value="1"></td>
+<td><input class="unit" type="number" value="0"></td>
+</tr>
+</tbody>
 </table>
 
+<button onclick="addRow()">Add Item</button>
+
+<label>Notes</label>
+<textarea id="notes"></textarea>
+
+<button onclick="openInvoice()">Open Invoice</button>
+
 <script>
-let itemsContainer = document.getElementById("items");
-let invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
+function addRow() {
+    const row = document.createElement("tr");
+    row.classList.add("item-row");
+    row.innerHTML = `
+        <td><input class="desc"></td>
+        <td><input class="qty" type="number" value="1"></td>
+        <td><input class="unit" type="number" value="0"></td>`;
+    document.getElementById("item-body").appendChild(row);
+}
 
-// LOGO LOADING
-let logoDataURL = localStorage.getItem("invoiceLogo") || "";
-document.getElementById("logoPreview").src = logoDataURL;
-
-// PAYEE DETAILS
-document.getElementById("payeeName").value = localStorage.getItem("payeeName") || "";
-document.getElementById("payeeBSB").value = localStorage.getItem("payeeBSB") || "";
-document.getElementById("payeeAccount").value = localStorage.getItem("payeeAccount") || "";
-document.getElementById("payeeABN").value = localStorage.getItem("payeeABN") || "";
-
-// LOGO INPUT
-document.getElementById("logoInput").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = evt => {
-      logoDataURL = evt.target.result;
-      localStorage.setItem("invoiceLogo", logoDataURL);
-      document.getElementById("logoPreview").src = logoDataURL;
+function openInvoice() {
+    const data = {
+        number: document.getElementById("invoice-number").value,
+        date: document.getElementById("invoice-date").value,
+        abn: document.getElementById("abn").value,
+        address: document.getElementById("business-address").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        bankName: document.getElementById("bank-name").value,
+        bsb: document.getElementById("bsb").value,
+        account: document.getElementById("account-number").value,
+        notes: document.getElementById("notes").value,
+        items: []
     };
-    reader.readAsDataURL(file);
-  }
-});
 
-// AUTO-INVOICE NUMBER
-function generateInvoiceNumber() {
-  let lastNum = parseInt(localStorage.getItem("lastInvoiceNumber") || "1000");
-  lastNum++;
-  localStorage.setItem("lastInvoiceNumber", lastNum);
-  return lastNum;
-}
+    document.querySelectorAll('.item-row').forEach(row => {
+        data.items.push({
+            description: row.querySelector('.desc').value,
+            qty: parseFloat(row.querySelector('.qty').value),
+            unit: parseFloat(row.querySelector('.unit').value)
+        });
+    });
 
-// ADD ITEM
-function addItem() {
-  const div = document.createElement("div");
-  div.className = "invoice-item";
-  div.innerHTML = `
-    <input type="text" placeholder="Description">
-    <input type="number" placeholder="Qty" min="0" value="1">
-    <input type="number" placeholder="Price" min="0" step="0.01">
-    <button onclick="this.parentElement.remove()">Remove</button>
-  `;
-  itemsContainer.appendChild(div);
-}
+    localStorage.setItem("invoiceData", JSON.stringify(data));
 
-// SAVE INVOICE
-function saveInvoice() {
-  const inv = {
-    clientName: clientName.value,
-    clientPhone: clientPhone.value,
-    clientEmail: clientEmail.value,
-    invoiceNumber: invoiceNumber.value || generateInvoiceNumber(),
-    invoiceDate: invoiceDate.value,
-    dueDate: dueDate.value,
-    notes: notes.value,
-    status: invoiceStatus.value,
-    payeeName: payeeName.value,
-    payeeBSB: payeeBSB.value,
-    payeeAccount: payeeAccount.value,
-    payeeABN: payeeABN.value,
-    logo: logoDataURL,
-    items: Array.from(document.querySelectorAll(".invoice-item")).map(item => {
-      const inputs = item.querySelectorAll("input");
-      return {
-        description: inputs[0].value,
-        qty: parseFloat(inputs[1].value) || 0,
-        price: parseFloat(inputs[2].value) || 0
-      };
-    })
-  };
-
-  if (!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate) {
-    alert("Please fill in Client Name, Invoice Number and Invoice Date");
-    return;
-  }
-
-  invoices.push(inv);
-  localStorage.setItem("invoices", JSON.stringify(invoices));
-
-  // Save payee details for next invoice
-  localStorage.setItem("payeeName", payeeName.value);
-  localStorage.setItem("payeeBSB", payeeBSB.value);
-  localStorage.setItem("payeeAccount", payeeAccount.value);
-  localStorage.setItem("payeeABN", payeeABN.value);
-
-  // RESET FORM except logo and payee
-  clientName.value = clientPhone.value = clientEmail.value = "";
-  invoiceNumber.value = "";
-  invoiceDate.value = dueDate.value = "";
-  notes.value = "";
-  invoiceStatus.value = "Unpaid";
-  itemsContainer.innerHTML = "";
-  addItem();
-
-  renderInvoiceList();
-}
-
-// FORMAT CURRENCY
-function formatCurrency(val) {
-  return "$" + val.toFixed(2);
-}
-
-// AUTO STATUS + LIST
-function renderInvoiceList() {
-  const tbody = document.querySelector("#invoiceTable tbody");
-  tbody.innerHTML = "";
-  const filter = document.getElementById("filterStatus").value;
-  const today = new Date().toISOString().split("T")[0];
-
-  invoices.forEach((inv, index) => {
-    // AUTO OVERDUE CALCULATION (only if not Paid)
-    if (inv.status !== "Paid" && inv.dueDate && inv.dueDate < today) {
-      inv.status = "Overdue";
-    }
-
-    // FILTER
-    if (filter !== "All" && inv.status !== filter) return;
-
-    let statusClass =
-      inv.status === "Paid"
-        ? "status-paid"
-        : inv.status === "Overdue"
-        ? "status-overdue"
-        : "status-unpaid";
-
-    const tr = document.createElement("tr");
-    tr.className = statusClass;
-    tr.innerHTML = `
-      <td>${inv.invoiceNumber}</td>
-      <td>${inv.clientName}</td>
-      <td>${inv.invoiceDate}</td>
-      <td>${inv.dueDate}</td>
-      <td>${inv.status}</td>
-      <td>
-        <button onclick="openInvoice(${index})">Open</button>
-        <button onclick="markPaid(${index})">Mark Paid</button>
-        <button onclick="deleteInvoice(${index})">Delete</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  localStorage.setItem("invoices", JSON.stringify(invoices));
-}
-
-// OPEN INVOICE IN NEW TAB
-function openInvoice(index) {
-  const inv = invoices[index];
-  const total = inv.items.reduce((sum, i) => sum + i.qty * i.price, 0);
-  const itemsHtml = inv.items
-    .map(
-      i => `<tr><td>${i.description}</td><td>${i.qty}</td><td>${formatCurrency(i.price)}</td><td>${formatCurrency(i.qty * i.price)}</td></tr>`
-    )
-    .join("");
-
-  const html = `
-    <html><head><title>Invoice ${inv.invoiceNumber}</title>
+    const w = window.open("");
+    w.document.write(`<!DOCTYPE html><html><head><title>Invoice</title>
     <style>
-      body{font-family:Arial;padding:20px;}
-      table{width:100%;border-collapse:collapse;margin-top:20px;}
-      th,td{border:1px solid #000;padding:6px;text-align:left;}
-      th{background:#eee;}
+    body { font-family: Arial; padding: 40px; }
+    .row { display: flex; justify-content: space-between; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    .total { text-align: right; font-size: 22px; font-weight: bold; }
+    .footer { text-align: center; margin-top: 40px; font-size: 14px; }
+    .disclaimer { background: #f0f0f0; padding: 15px; margin-top: 25px; font-size: 13px; }
     </style>
-    </head>
-    <body>
-      ${inv.logo ? `<img src="${inv.logo}" style="max-width:200px;">` : ""}
-      <h1>Invoice ${inv.invoiceNumber}</h1>
-      <h3>Client</h3>
-      <p>${inv.clientName}<br>${inv.clientPhone}<br>${inv.clientEmail}</p>
+    </head><body>`);
 
-      <h3>Payee</h3>
-      <p>${inv.payeeName}<br>BSB: ${inv.payeeBSB}<br>Acc: ${inv.payeeAccount}<br>ABN: ${inv.payeeABN}</p>
+    const itemsHTML = data.items.map(i => `
+        <tr>
+            <td>${i.description}</td>
+            <td>${i.qty}</td>
+            <td>$${i.unit.toFixed(2)}</td>
+            <td>$${(i.qty * i.unit).toFixed(2)}</td>
+        </tr>`).join('');
 
-      <h3>Details</h3>
-      <p>Date: ${inv.invoiceDate}<br>Due: ${inv.dueDate}<br>Status: ${inv.status}</p>
+    const subtotal = data.items.reduce((t,i)=>t + i.qty*i.unit,0);
 
-      <table>
-        <tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr>
-        ${itemsHtml}
-        <tr><th colspan="3">Total</th><th>${formatCurrency(total)}</th></tr>
-      </table>
+    w.document.write(`
+    <div class="row">
+        <div>
+            <img src="https://www.bawbawaerialservices.com.au/wp-content/uploads/2023/07/cropped-SouthernCross-White-1024x576.png" style="width:200px;">
+            <p><b>Baw Baw Aerial Services</b><br>ABN: ${data.abn}<br>${data.address}</p>
+        </div>
+        <div>
+            <h1>TAX INVOICE</h1>
+            <p><b>DATE:</b> ${data.date}<br>
+            <b>INVOICE #:</b> ${data.number}<br>
+            <b>DESCRIPTION:</b> Services<br>
+            <b>PAY TO:</b> Harry Graafsma<br>
+            <b>BSB:</b> ${data.bsb}<br>
+            <b>ACCOUNT:</b> ${data.account}</p>
+        </div>
+    </div>
 
-      <h3>Notes</h3>
-      <p>${inv.notes}</p>
-    </body></html>`;
+    <table>
+        <thead><tr><th>Description</th><th>Qty/Hrs</th><th>Unit Price</th><th>Total</th></tr></thead>
+        <tbody>${itemsHTML}</tbody>
+    </table>
 
-  const win = window.open();
-  win.document.write(html);
-  win.document.close();
+    <p class="total">$${subtotal.toFixed(2)}</p>
+
+    <div class="disclaimer">
+        Please note that the full-quality files from Baw Baw Aerial Services will only be delivered upon receipt of full payment. Until the payment is received, files provided will be watermarked and of reduced quality for preview purposes only. We kindly request timely settlement to ensure the promot deliverv of the final high-resolution files. Thank you for your business.<br><br>
+        All services must be paid within 14 days. A late fee may apply.
+    </div>
+
+    <div class="footer">
+        www.bawbawaerialservices.com.au • harry@bawbawaerialservices.com.au
+    </div>
+
+    </body></html>`);
+
+    w.document.close();
 }
-
-// MARK PAID
-function markPaid(index) {
-  invoices[index].status = "Paid";
-  localStorage.setItem("invoices", JSON.stringify(invoices));
-  renderInvoiceList();
-}
-
-// DELETE
-function deleteInvoice(index) {
-  if (confirm("Delete invoice?")) {
-    invoices.splice(index, 1);
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-    renderInvoiceList();
-  }
-}
-
-// INIT
-window.onload = () => {
-  addItem();
-  renderInvoiceList();
-};
 </script>
 </body>
 </html>
