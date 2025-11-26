@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Invoice Generator</title>
+<title>Invoice Generator (Firebase)</title>
 <style>
   body{font-family:Arial,Helvetica,sans-serif;padding:20px;background:#f5f5f7}
   h1{margin-top:0}
   input,textarea,select{width:100%;padding:8px;margin:6px 0;box-sizing:border-box}
   button{padding:8px 10px;margin:6px 4px;cursor:pointer}
-  .flex{display:flex;gap:16px;flex-wrap:wrap}
-  .col{flex:1;min-width:250px}
+  .flex{display:flex;gap:16px}
+  .col{flex:1}
   table{width:100%;border-collapse:collapse;background:#fff}
   th,td{border:1px solid #ddd;padding:8px}
   th{background:#f0f0f0}
@@ -21,7 +21,7 @@
 </style>
 </head>
 <body>
-<h1>Invoice Generator</h1>
+<h1>Invoice Generator (Firebase)</h1>
 
 <h3>Upload Logo</h3>
 <input type="file" id="logoInput" accept="image/*">
@@ -38,7 +38,7 @@
 
   <div class="col">
     <h3>Payee (Your details)</h3>
-    <input id="payeeName" placeholder="Business name (e.g. Baw Baw Aerial Services)">
+    <input id="payeeName" placeholder="Business name" value="Baw Baw Aerial Services">
     <input id="payeeABN" placeholder="ABN">
     <input id="payeeAddress" placeholder="Business address">
     <input id="payeePhone" placeholder="Phone">
@@ -59,7 +59,8 @@
   <option value="Paid">Paid</option>
   <option value="Overdue">Overdue</option>
 </select>
-<label><input type="checkbox" id="includeGST" checked> Include GST (10%)</label>
+
+<label><input type="checkbox" id="gstToggle" checked> Include GST (10%)</label>
 
 <h3>Items</h3>
 <table id="itemsTable">
@@ -71,7 +72,7 @@
 <button id="addItemBtn">Add item</button>
 
 <h3>Notes</h3>
-<textarea id="notes" rows="3" placeholder="Notes to appear in message box on invoice"></textarea>
+<textarea id="notes" rows="3" placeholder="Notes to appear on invoice"></textarea>
 
 <button id="saveInvoiceBtn">Save invoice</button>
 
@@ -87,190 +88,190 @@
   <tbody></tbody>
 </table>
 
-<script>
-// --- State and helpers ---
-let invoices = JSON.parse(localStorage.getItem('invoices')||'[]');
-let logoDataURL = localStorage.getItem('invoiceLogo')||'';
-const itemsBody = document.getElementById('itemsBody');
-const logoPreview = document.getElementById('logoPreview');
-logoPreview.src = logoDataURL;
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+  import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
-function saveToStorage(){ localStorage.setItem('invoices', JSON.stringify(invoices)); }
-function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
-
-// --- Logo upload ---
-document.getElementById('logoInput').addEventListener('change', e=>{
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    logoDataURL = ev.target.result;
-    logoPreview.src = logoDataURL;
-    localStorage.setItem('invoiceLogo', logoDataURL);
-  };
-  r.readAsDataURL(f);
-});
-
-// --- Items ---
-function addItemRow(desc='', qty=1, unit=0){
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input class="it-desc" value="${escapeHtml(desc)}"></td>
-    <td><input class="it-qty" type="number" min="0" value="${qty}"></td>
-    <td><input class="it-unit" type="number" min="0" step="0.01" value="${unit}"></td>
-    <td class="it-total">${formatCurrency(qty*unit)}</td>
-    <td><button class="remove">Remove</button></td>`;
-  itemsBody.appendChild(tr);
-
-  tr.querySelector('.remove').addEventListener('click', ()=>tr.remove());
-  const qtyInput = tr.querySelector('.it-qty');
-  const unitInput = tr.querySelector('.it-unit');
-  function updateTotal(){
-    const q = parseFloat(qtyInput.value||0);
-    const u = parseFloat(unitInput.value||0);
-    tr.querySelector('.it-total').textContent = formatCurrency(q*u);
-  }
-  qtyInput.addEventListener('input', updateTotal);
-  unitInput.addEventListener('input', updateTotal);
-}
-
-document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
-
-// --- Save invoice ---
-function saveInvoice(){
-  const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
-    const desc = r.querySelector('.it-desc').value || '';
-    const qty = parseFloat(r.querySelector('.it-qty').value)||0;
-    const unit = parseFloat(r.querySelector('.it-unit').value)||0;
-    return {description:desc, qty, unit};
-  }).filter(it => it.description || it.qty || it.unit);
-
-  const inv = {
-    clientName: document.getElementById('clientName').value || '',
-    clientPhone: document.getElementById('clientPhone').value || '',
-    clientEmail: document.getElementById('clientEmail').value || '',
-    clientAddress: document.getElementById('clientAddress').value || '',
-    payeeName: document.getElementById('payeeName').value || '',
-    payeeABN: document.getElementById('payeeABN').value || '',
-    payeeAddress: document.getElementById('payeeAddress').value || '',
-    payeePhone: document.getElementById('payeePhone').value || '',
-    payeeEmail: document.getElementById('payeeEmail').value || '',
-    payeeBSB: document.getElementById('payeeBSB').value || '',
-    payeeAccount: document.getElementById('payeeAccount').value || '',
-    invoiceNumber: document.getElementById('invoiceNumber').value || generateInvoiceNumber(),
-    invoiceDate: document.getElementById('invoiceDate').value || new Date().toISOString().split('T')[0],
-    dueDate: document.getElementById('dueDate').value || '',
-    status: document.getElementById('invoiceStatus').value || 'Unpaid',
-    includeGST: document.getElementById('includeGST').checked,
-    notes: document.getElementById('notes').value || '',
-    logo: logoDataURL,
-    items: items
+  // --- Firebase config ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdem4YB76fD0oPrTfKMoozEJGSFi9a7ms",
+    authDomain: "invoicemanager205.firebaseapp.com",
+    projectId: "invoicemanager205",
+    storageBucket: "invoicemanager205.firebasestorage.app",
+    messagingSenderId: "495708151568",
+    appId: "1:495708151568:web:bd1f67081b8de55fe00f95",
+    measurementId: "G-HPH3T7BT6Q"
   };
 
-  if(!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate){
-    alert('Please fill Client name, Invoice number and Invoice date');
-    return;
-  }
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
 
-  invoices.push(inv);
-  saveToStorage();
+  let logoBase64 = '';
+  const itemsBody = document.getElementById('itemsBody');
+  const logoPreview = document.getElementById('logoPreview');
 
-  // reset form (keep payee and logo)
-  document.getElementById('clientName').value='';
-  document.getElementById('clientPhone').value='';
-  document.getElementById('clientEmail').value='';
-  document.getElementById('clientAddress').value='';
-  document.getElementById('invoiceNumber').value='';
-  document.getElementById('invoiceDate').value='';
-  document.getElementById('dueDate').value='';
-  document.getElementById('notes').value='';
-  document.getElementById('includeGST').checked = true;
-  itemsBody.innerHTML=''; addItemRow();
+  // --- Logo upload ---
+  document.getElementById('logoInput').addEventListener('change', e=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      logoBase64 = ev.target.result;
+      logoPreview.src = logoBase64;
+    };
+    r.readAsDataURL(f);
+  });
 
-  renderInvoiceList();
-}
-
-document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
-
-// --- Invoice list rendering ---
-function renderInvoiceList(){
-  const tbody = document.querySelector('#invoiceTable tbody');
-  tbody.innerHTML='';
-  const filter = document.getElementById('filterStatus').value;
-  const today = new Date().toISOString().split('T')[0];
-
-  invoices.forEach((inv, idx)=>{
-    if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < today) inv.status = 'Overdue';
-    if(filter !== 'All' && inv.status !== filter) return;
-
+  // --- Items ---
+  function addItemRow(desc='', qty=1, unit=0){
     const tr = document.createElement('tr');
-    tr.className = inv.status === 'Paid' ? 'status-paid' : inv.status === 'Overdue' ? 'status-overdue' : 'status-unpaid';
     tr.innerHTML = `
-      <td>${escapeHtml(inv.invoiceNumber)}</td>
-      <td>${escapeHtml(inv.clientName)}</td>
-      <td>${escapeHtml(inv.invoiceDate)}</td>
-      <td>${escapeHtml(inv.dueDate||'')}</td>
-      <td>${escapeHtml(inv.status)}</td>
+      <td><input class="it-desc" value="${desc}"></td>
+      <td><input class="it-qty" type="number" min="0" value="${qty}"></td>
+      <td><input class="it-unit" type="number" min="0" step="0.01" value="${unit}"></td>
+      <td class="it-total">${(qty*unit).toFixed(2)}</td>
+      <td><button class="remove">Remove</button></td>`;
+    itemsBody.appendChild(tr);
+
+    tr.querySelector('.remove').addEventListener('click', ()=>tr.remove());
+    const qtyInput = tr.querySelector('.it-qty');
+    const unitInput = tr.querySelector('.it-unit');
+    function updateTotal(){
+      const q = parseFloat(qtyInput.value||0);
+      const u = parseFloat(unitInput.value||0);
+      tr.querySelector('.it-total').textContent = (q*u).toFixed(2);
+    }
+    qtyInput.addEventListener('input', updateTotal);
+    unitInput.addEventListener('input', updateTotal);
+  }
+
+  document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
+  addItemRow();
+
+  // --- Save invoice ---
+  async function saveInvoice(){
+    const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
+      return {
+        description: r.querySelector('.it-desc').value,
+        qty: parseFloat(r.querySelector('.it-qty').value)||0,
+        unit: parseFloat(r.querySelector('.it-unit').value)||0
+      };
+    }).filter(it=>it.description || it.qty || it.unit);
+
+    const gstEnabled = document.getElementById('gstToggle').checked;
+    const invoiceData = {
+      clientName: document.getElementById('clientName').value,
+      clientPhone: document.getElementById('clientPhone').value,
+      clientEmail: document.getElementById('clientEmail').value,
+      clientAddress: document.getElementById('clientAddress').value,
+      payeeName: document.getElementById('payeeName').value,
+      payeeABN: document.getElementById('payeeABN').value,
+      payeeAddress: document.getElementById('payeeAddress').value,
+      payeePhone: document.getElementById('payeePhone').value,
+      payeeEmail: document.getElementById('payeeEmail').value,
+      payeeBSB: document.getElementById('payeeBSB').value,
+      payeeAccount: document.getElementById('payeeAccount').value,
+      invoiceNumber: document.getElementById('invoiceNumber').value || 'INV-' + Date.now(),
+      invoiceDate: document.getElementById('invoiceDate').value,
+      dueDate: document.getElementById('dueDate').value,
+      status: document.getElementById('invoiceStatus').value,
+      items: items,
+      gst: gstEnabled,
+      notes: document.getElementById('notes').value
+    };
+
+    try {
+      let logoURL = '';
+      if(logoBase64){
+        const logoRef = ref(storage, `logos/${invoiceData.invoiceNumber}.png`);
+        await uploadString(logoRef, logoBase64, 'data_url');
+        logoURL = await getDownloadURL(logoRef);
+      }
+      await addDoc(collection(db,"invoices"),{...invoiceData, logo: logoURL});
+      alert("Invoice saved!");
+      resetForm();
+      await loadInvoices();
+    } catch(e){ console.error(e); alert("Error saving invoice"); }
+  }
+
+  document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
+
+  // --- Load invoices ---
+  async function loadInvoices(){
+    const filter = document.getElementById('filterStatus').value;
+    const snapshot = await getDocs(collection(db,"invoices"));
+    const tbody = document.querySelector('#invoiceTable tbody');
+    tbody.innerHTML='';
+    snapshot.docs.forEach(docSnap=>{
+      const inv = docSnap.data();
+      const id = docSnap.id;
+      let status = inv.status;
+      const today = new Date().toISOString().split('T')[0];
+      if(status !== "Paid" && inv.dueDate && inv.dueDate < today) status="Overdue";
+      if(filter!=="All" && filter!==status) return;
+      const tr = document.createElement('tr');
+      tr.className = status==="Paid"?"status-paid":status==="Overdue"?"status-overdue":"status-unpaid";
+      tr.innerHTML = `<td>${inv.invoiceNumber}</td><td>${inv.clientName}</td><td>${inv.invoiceDate}</td><td>${inv.dueDate||''}</td><td>${status}</td>
       <td>
-        <button data-idx="${idx}" class="openBtn">Open</button>
-        <button data-idx="${idx}" class="payBtn">Mark Paid</button>
-        <button data-idx="${idx}" class="delBtn">Delete</button>
+        <button data-id="${id}" class="openBtn">Open</button>
+        <button data-id="${id}" class="payBtn">Mark Paid</button>
+        <button data-id="${id}" class="delBtn">Delete</button>
       </td>`;
-    tbody.appendChild(tr);
-  });
-  saveToStorage();
+      tbody.appendChild(tr);
+    });
+    // Attach handlers
+    document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
+    document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>markPaid(e.currentTarget.dataset.id)));
+    document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>deleteInvoice(e.currentTarget.dataset.id)));
+  }
 
-  document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(Number(e.currentTarget.dataset.idx))));
-  document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>{ invoices[Number(e.currentTarget.dataset.idx)].status='Paid'; saveToStorage(); renderInvoiceList(); }));
-  document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{ if(confirm('Delete invoice?')){ invoices.splice(Number(e.currentTarget.dataset.idx),1); saveToStorage(); renderInvoiceList(); }}));
-}
+  document.getElementById('filterStatus').addEventListener('change', loadInvoices);
 
-document.getElementById('filterStatus').addEventListener('change', renderInvoiceList);
+  // --- Invoice actions ---
+  async function markPaid(id){
+    await updateDoc(doc(db,"invoices",id),{status:"Paid"});
+    loadInvoices();
+  }
+  async function deleteInvoice(id){
+    if(confirm("Delete invoice?")){ await deleteDoc(doc(db,"invoices",id)); loadInvoices(); }
+  }
+  async function openInvoice(id){
+    const snap = await getDocs(collection(db,"invoices"));
+    const docSnap = snap.docs.find(d=>d.id===id);
+    if(!docSnap) return;
+    const inv = docSnap.data();
+    const subtotal = inv.items.reduce((s,it)=>s + it.qty*it.unit,0);
+    const gstAmount = inv.gst ? subtotal*0.1 : 0;
+    const total = subtotal+gstAmount;
+    const itemsHtml = inv.items.map(it=>`<tr><td>${it.description}</td><td>${it.qty}</td><td>${it.unit.toFixed(2)}</td><td>${(it.qty*it.unit).toFixed(2)}</td></tr>`).join('');
+    const html = `<html><head><title>Invoice ${inv.invoiceNumber}</title>
+      <style>body{font-family:Arial;padding:40px} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0}</style></head><body>
+      <div>${inv.logo?`<img src="${inv.logo}" style="max-width:220px;">`:''}</div>
+      <h2>Invoice: ${inv.invoiceNumber}</h2>
+      <div><strong>Date:</strong> ${inv.invoiceDate} | <strong>Due:</strong> ${inv.dueDate||''}</div>
+      <h3>Bill To</h3><div>${inv.clientName}<br>${inv.clientAddress}<br>${inv.clientPhone}<br>${inv.clientEmail}</div>
+      <h3>Items</h3><table><thead><tr><th>Description</th><th>Qty/Hrs</th><th>Unit</th><th>Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+      <div>Subtotal: ${subtotal.toFixed(2)}<br>GST: ${gstAmount.toFixed(2)}<br><strong>Total: ${total.toFixed(2)}</strong></div>
+      <div>${inv.notes}</div></body></html>`;
+    const w = window.open(); w.document.write(html); w.document.close();
+  }
 
-// --- Open invoice (new tab) ---
-function openInvoice(i){
-  const inv = invoices[i];
-  const subtotal = inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
-  const gst = inv.includeGST ? subtotal * 0.10 : 0;
-  const total = subtotal + gst;
+  function resetForm(){
+    document.getElementById('clientName').value='';
+    document.getElementById('clientPhone').value='';
+    document.getElementById('clientEmail').value='';
+    document.getElementById('clientAddress').value='';
+    document.getElementById('invoiceNumber').value='';
+    document.getElementById('invoiceDate').value='';
+    document.getElementById('dueDate').value='';
+    document.getElementById('notes').value='';
+    itemsBody.innerHTML=''; addItemRow();
+  }
 
-  const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
-
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right} .disclaimer{margin-top:30px;font-size:13px;color:#444;background:#fafafa;padding:12px}</style></head><body>`
-    + `<div class="row"><div>`
-    + (inv.logo?`<img src="${inv.logo}" style="max-width:220px;display:block;margin-bottom:10px">`:'')
-    + `<strong>${escapeHtml(inv.payeeName||'')}</strong><br>ABN: ${escapeHtml(inv.payeeABN||'')}<br>${escapeHtml(inv.payeeAddress||'')}<br>Phone: ${escapeHtml(inv.payeePhone||'')}<br>Email: ${escapeHtml(inv.payeeEmail||'')}</div>`
-    + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Pay To:</strong> ${escapeHtml(inv.payeeName||'')}<br><strong>BSB:</strong> ${escapeHtml(inv.payeeBSB||'')}<br><strong>Account:</strong> ${escapeHtml(inv.payeeAccount||'')}</div></div></div>`
-    + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
-    + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
-    + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
-    + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
-    + `<div style="font-weight:bold">Total: ${formatCurrency(total)}</div></div>`
-    + `<div class="msg">${escapeHtml(inv.notes)}</div>`
-    + `<div class="disclaimer">Please note that the full-quality files from Baw Baw Aerial Services will only be delivered upon receipt of full payment. Until the payment is received, files provided will be watermarked and of reduced quality for preview purposes only. We kindly request timely settlement to ensure the prompt delivery of the final high-resolution files. Thank you for your business.<br><br>All services must be paid within 14 days. A late fee may apply.</div>`
-    + `<div style="margin-top:30px">www.bawbawaerialservices.com.au • bawbawaerialservices@gmail.com</div></body></html>`;
-
-  const w = window.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-// --- Utilities ---
-function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
-
-// --- Init ---
-(function init(){
-  ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
-    const el = document.getElementById(id);
-    el.value = localStorage.getItem(id)||el.value;
-    el.addEventListener('change',()=> localStorage.setItem(id, el.value));
-  });
-
-  if(logoDataURL) logoPreview.src = logoDataURL;
-  renderInvoiceList();
-  if(itemsBody.children.length===0) addItemRow();
-})();
+  // --- Init ---
+  loadInvoices();
 </script>
 </body>
 </html>
