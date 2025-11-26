@@ -1,194 +1,562 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Cloud Invoice Manager</title>
+   <!-- Load Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <style>
+       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+       body { font-family: 'Inter', sans-serif; }
+       input[type="number"]::-webkit-inner-spin-button,
+       input[type="number"]::-webkit-outer-spin-button {
+           -webkit-appearance: none;
+           margin: 0;
+       }
+       input[type="number"] { -moz-appearance: textfield; }
+       .status-paid { background-color: #d1fae5; }
+       .status-overdue { background-color: #fee2e2; }
+       .status-unpaid { background-color: #f0f9ff; }
+       .invoice-table th, .invoice-table td { padding: 0.75rem; }
+   </style>
+</head>
+<body class="bg-gray-50 p-4 sm:p-8">
 
-/* ------------------------- FIREBASE IMPORTS ------------------------- */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, getDocs, 
-  doc, updateDoc, getDoc 
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+   <div class="max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
+       <h1 class="text-3xl font-bold text-indigo-700 mb-6 border-b pb-3">Cloud-Powered Invoice Manager</h1>
+       <p class="mb-6 text-gray-600">This application uses **Firebase Firestore** (a cloud database) to securely store your invoices instead of local browser storage. You must be logged in to save or view data.</p>
+       
+       <!-- Authentication Section -->
+       <div class="bg-indigo-50 p-4 rounded-lg shadow-inner mb-8 space-y-4 border border-indigo-200">
+           <h3 class="text-xl font-semibold text-indigo-800">☁️ Cloud Access (Firebase Authentication)</h3>
+           <p class="text-sm">Status: <strong id="login-status" class="font-medium text-red-600">Checking status...</strong></p>
+           <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+               <input type="email" id="loginEmail" placeholder="Email" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
+               <input type="password" id="loginPassword" placeholder="Password" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
+               <button onclick="loginUser()" class="bg-indigo-600 text-white p-2 rounded-lg font-medium hover:bg-indigo-700 transition">Log In</button>
+               <button onclick="logoutUser()" class="bg-gray-400 text-white p-2 rounded-lg font-medium hover:bg-gray-500 transition">Log Out</button>
+               <button onclick="signUpUser()" class="bg-green-600 text-white p-2 rounded-lg font-medium hover:bg-green-700 transition">Sign Up</button>
+           </div>
+       </div>
 
-/* ------------------------- FIREBASE CONFIG ------------------------- */
-const firebaseConfig = {
-  apiKey: "AIzaSyDdem4YB76fD0oPrTfKMoozEJGSFi9a7ms",
-  authDomain: "invoicemanager205.firebaseapp.com",
-  projectId: "invoicemanager205"
-};
+       <div class="grid lg:grid-cols-2 gap-10">
+           <!-- Invoice Creation Form -->
+           <div id="invoice-form">
+               <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Invoice</h2>
+               
+               <!-- Logo and Payee Details -->
+               <div class="mb-6 p-4 border rounded-lg bg-gray-50">
+                   <h3 class="text-lg font-medium mb-3">Your Details (Payee)</h3>
+                   <div class="flex items-center space-x-4 mb-4">
+                       <img id="logoPreview" class="w-20 h-20 object-contain rounded-lg border p-1 bg-white" src="https://placehold.co/80x80/EEEEEE/888888?text=Logo" onerror="this.src='https://placehold.co/80x80/EEEEEE/888888?text=Logo'">
+                       <label class="block">
+                           <span class="sr-only">Choose logo file</span>
+                           <input type="file" id="logoInput" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"/>
+                       </label>
+                   </div>
+                   <input type="text" id="payeeName" placeholder="Your Company Name" class="input-field mb-2">
+                   <input type="text" id="payeeABN" placeholder="Your ABN/Tax ID" class="input-field mb-2">
+                   <textarea id="payeeAddress" placeholder="Your Address" class="input-field mb-2"></textarea>
+                   <input type="text" id="payeePhone" placeholder="Your Phone" class="input-field mb-2">
+                   <input type="email" id="payeeEmail" placeholder="Your Email" class="input-field mb-2">
+                   <input type="text" id="payeeBSB" placeholder="Bank BSB" class="input-field mb-2">
+                   <input type="text" id="payeeAccount" placeholder="Bank Account Number" class="input-field">
+               </div>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+               <!-- Client and Invoice Details -->
+               <div class="grid sm:grid-cols-2 gap-4 mb-6">
+                   <input type="text" id="invoiceNumber" placeholder="Invoice #" class="input-field">
+                   <select id="invoiceStatus" class="input-field">
+                       <option value="Unpaid">Unpaid</option>
+                       <option value="Paid">Paid</option>
+                       <option value="Cancelled">Cancelled</option>
+                   </select>
+                   <input type="date" id="invoiceDate" placeholder="Invoice Date" class="input-field">
+                   <input type="date" id="dueDate" placeholder="Due Date" class="input-field">
+               </div>
 
-console.log("Firebase connected (NO STORAGE USED)");
+               <h3 class="text-lg font-medium mb-3">Client Details (Bill To)</h3>
+               <input type="text" id="clientName" placeholder="Client Name" class="input-field mb-2">
+               <textarea id="clientAddress" placeholder="Client Address" class="input-field mb-2"></textarea>
+               <input type="text" id="clientPhone" placeholder="Client Phone" class="input-field mb-2">
+               <input type="email" id="clientEmail" placeholder="Client Email" class="input-field">
+               
+               <h3 class="text-lg font-medium mt-6 mb-3">Invoice Items</h3>
+               <table class="w-full text-sm mb-4">
+                   <thead>
+                       <tr class="bg-gray-100 rounded-t-lg">
+                           <th class="p-2 text-left w-1/2 rounded-tl-lg">Description</th>
+                           <th class="p-2 text-right">Qty</th>
+                           <th class="p-2 text-right">Unit Price</th>
+                           <th class="p-2 text-right rounded-tr-lg">Total</th>
+                           <th class="p-2"></th>
+                       </tr>
+                   </thead>
+                   <tbody id="itemsBody"></tbody>
+               </table>
+               <button id="addItemBtn" class="w-full bg-blue-100 text-blue-700 p-2 rounded-lg font-medium hover:bg-blue-200 transition mb-4">+ Add Item</button>
 
-/* ------------------------- ITEM ADDING ------------------------- */
+               <div class="flex justify-between items-center mb-4">
+                   <label class="flex items-center space-x-2 text-sm text-gray-700">
+                       <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500">
+                       <span>Include GST (10%)</span>
+                   </label>
+               </div>
+               
+               <textarea id="notes" placeholder="Notes (e.g., Payment Terms, Disclaimers)" class="input-field mb-6 h-20"></textarea>
 
-function addItem() {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-       <td><input class="desc" style="width:100%"></td>
-       <td><input class="qty" type="number" step="1" style="width:80px"></td>
-       <td><input class="unit" type="number" step="0.01" style="width:100px"></td>
-       <td><button onclick="this.parentNode.parentNode.remove()">X</button></td>
-    `;
-    document.getElementById("itemRows").appendChild(row);
-}
+               <button id="saveInvoiceBtn" class="w-full bg-green-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-green-700 transition">💾 Save Invoice to Cloud</button>
 
-/* ------------------------- LOGO (LOCALSTORAGE FIXED) ------------------------- */
+           </div>
 
-let logoBase64 = localStorage.getItem("invoiceLogo") || "";
+           <!-- Invoice List -->
+           <div id="invoice-list">
+               <h2 class="text-2xl font-semibold text-gray-800 mb-4">Saved Invoices</h2>
 
-// Load saved logo back into input preview (optional)
+               <div class="mb-4">
+                   <label for="filterStatus" class="text-sm font-medium text-gray-700 mr-2">Filter by Status:</label>
+                   <select id="filterStatus" class="p-2 border rounded-lg">
+                       <option value="All">All</option>
+                       <option value="Unpaid">Unpaid</option>
+                       <option value="Paid">Paid</option>
+                       <option value="Overdue">Overdue</option>
+                       <option value="Cancelled">Cancelled</option>
+                   </select>
+               </div>
 
-document.getElementById("logoInput").addEventListener("change", function(e){
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-        logoBase64 = reader.result;
-        localStorage.setItem("invoiceLogo", logoBase64);
-    };
-    reader.readAsDataURL(file);
-});
+               <div class="overflow-x-auto rounded-lg border">
+                   <table class="invoice-table w-full text-sm">
+                       <thead>
+                           <tr class="bg-gray-100">
+                               <th class="text-left">#</th>
+                               <th class="text-left">Client</th>
+                               <th class="text-left">Date</th>
+                               <th class="text-left">Due</th>
+                               <th class="text-left">Status</th>
+                               <th class="text-left">Actions</th>
+                           </tr>
+                       </thead>
+                       <tbody id="invoiceTableBody">
+                           <tr><td colspan="6" class="text-center p-4 text-gray-500">Please log in to load invoices.</td></tr>
+                       </tbody>
+                   </table>
+               </div>
+           </div>
+       </div>
+   </div>
 
-/* ------------------------- SAVE INVOICE ------------------------- */
+   <!-- Reusable styles for inputs -->
+   <style>
+       .input-field {
+           @apply w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150;
+       }
+   </style>
 
-async function saveInvoice() {
+   <script type="module">
+       // =========================================================================
+       // FIREBASE V9 MODULAR SDK IMPORTS
+       // =========================================================================
+       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+       import {
+         getAuth,
+         createUserWithEmailAndPassword,
+         signInWithEmailAndPassword,
+         signOut,
+         onAuthStateChanged
+       } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+       import {
+         getFirestore,
+         collection,
+         query,
+         where,
+         getDocs,
+         addDoc,
+         updateDoc,
+         deleteDoc,
+         serverTimestamp
+       } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-    let items = [];
-    document.querySelectorAll("#itemRows tr").forEach(row=>{
-        const desc = row.querySelector(".desc").value;
-        const qty = Number(row.querySelector(".qty").value);
-        const unit = Number(row.querySelector(".unit").value);
-        if(desc) items.push({ description: desc, qty, unit });
-    });
+       // =========================================================================
+       // USER'S FIREBASE CONFIGURATION (Provided by user)
+       // =========================================================================
+       const firebaseConfig = {
+         apiKey: "AIzaSyDFk7MaEfHd7ApFYS7TztSFphtspT4-axo",
+         authDomain: "invoicemanager-b0604.firebaseapp.com",
+         projectId: "invoicemanager-b0604",
+         storageBucket: "invoicemanager-b0604.firebasestorage.app",
+         messagingSenderId: "47773331214",
+         appId: "1:47773331214:web:6d9066b2e6b1f29cb3715f",
+         measurementId: "G-0GWKMR09EN"
+       };
+       // NOTE: measurementId is for analytics and not strictly needed for auth/db
 
-    const inv = {
-        invoiceNumber: invNum.value,
-        invoiceDate: invDate.value,
-        dueDate: invDue.value,
-        clientName: clientName.value,
-        clientAddress: clientAddress.value,
-        clientPhone: clientPhone.value,
-        clientEmail: clientEmail.value,
-        items,
-        gst: gstToggle.checked,
-        notes: notes.value,
-        logo: logoBase64,  // ← LOCALSTORAGE LOGO
-        status: "Unpaid",
-        created: Date.now()
-    };
+       // Initialize Firebase services
+       const app = initializeApp(firebaseConfig);
+       const auth = getAuth(app);
+       const db = getFirestore(app);
+       let userId = null;
+       let invoices = [];
 
-    await addDoc(collection(db,"invoices"), inv);
-    alert("Invoice Saved!");
-    loadInvoices();
-}
+       // DOM Elements
+       const itemsBody = document.getElementById('itemsBody');
+       const logoPreview = document.getElementById('logoPreview');
+       const invoiceTableBody = document.getElementById('invoiceTableBody');
+       const loginStatus = document.getElementById('login-status');
+       const loginEmailInput = document.getElementById('loginEmail');
+       const loginPasswordInput = document.getElementById('loginPassword');
 
-/* ------------------------- LOAD INVOICES ------------------------- */
+       // --- State and helpers (Logo and Payee still use Local Storage for simplicity) ---
+       let logoDataURL = localStorage.getItem('invoiceLogo')||'';
+       
+       // --- Set initial date values for better UX ---
+       const today = new Date().toISOString().split('T')[0];
+       document.getElementById('invoiceDate').value = today;
+       const dueDate = new Date();
+       dueDate.setDate(dueDate.getDate() + 14);
+       document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
 
-async function loadInvoices() {
-    const snap = await getDocs(collection(db,"invoices"));
-    const table = document.getElementById("invoiceTable");
-    table.innerHTML = "";
+       // --- UTILITY FUNCTIONS ---
+       function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
+       function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
+       function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
+       
+       function savePayeeToStorage(){
+         ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
+           localStorage.setItem(id, document.getElementById(id).value);
+         });
+       }
+       function loadPayeeFromStorage(){
+         ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
+           const el = document.getElementById(id);
+           el.value = localStorage.getItem(id)||el.value;
+           el.addEventListener('change', savePayeeToStorage);
+         });
+       }
 
-    snap.forEach(docSnap => {
-        const d = docSnap.data();
+       // --- Logo upload ---
+       document.getElementById('logoInput').addEventListener('change', e=>{
+         const f = e.target.files && e.target.files[0];
+         if(!f) return;
+         const r = new FileReader();
+         r.onload = ev => {
+           logoDataURL = ev.target.result;
+           logoPreview.src = logoDataURL;
+           localStorage.setItem('invoiceLogo', logoDataURL);
+         };
+         r.readAsDataURL(f);
+       });
 
-        const subtotal = d.items.reduce((s,it)=> s + it.qty * it.unit, 0);
-        const gst = d.gst ? subtotal * 0.1 : 0;
-        const total = subtotal + gst;
+       // --- Items ---
+       function addItemRow(desc='', qty=1, unit=0){
+         const tr = document.createElement('tr');
+         tr.className = "border-t border-gray-200";
+         tr.innerHTML = `
+           <td class="p-2"><input class="it-desc w-full" value="${escapeHtml(desc)}" placeholder="Description" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="p-2"><input class="it-qty w-full text-right" type="number" min="0" value="${qty}" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="p-2"><input class="it-unit w-full text-right" type="number" min="0" step="0.01" value="${unit}" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="it-total p-2 text-right font-medium">${formatCurrency(qty*unit)}</td>
+           <td class="p-2"><button type="button" class="remove text-red-500 hover:text-red-700 transition font-medium">X</button></td>`;
+         itemsBody.appendChild(tr);
 
-        let cls = "";
-        if(d.status === "Paid") cls = "paid";
-        else if(new Date(d.dueDate) < new Date() && d.status !== "Paid") cls = "overdue";
-        else cls = "unpaid";
+         tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); });
+       }
 
-        table.innerHTML += `
-          <tr class="${cls}">
-            <td>${d.invoiceNumber}</td>
-            <td>${d.invoiceDate}</td>
-            <td>${d.status}</td>
-            <td>${total.toFixed(2)}</td>
-            <td>
-                <button onclick="openInvoice('${docSnap.id}')">Open</button>
-                <button onclick="markPaid('${docSnap.id}')">Paid</button>
-            </td>
-          </tr>
-        `;
-    });
-}
+       function updateTotalRow(tr) {
+           const qtyInput = tr.querySelector('.it-qty');
+           const unitInput = tr.querySelector('.it-unit');
+           const q = parseFloat(qtyInput.value || 0);
+           const u = parseFloat(unitInput.value || 0);
+           tr.querySelector('.it-total').textContent = formatCurrency(q * u);
+       }
 
-loadInvoices();
+       document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
 
-/* ------------------------- MARK AS PAID ------------------------- */
+       // --- Save invoice (ASYNC CLOUD FUNCTION) ---
+       async function saveInvoice(){
+         if(!userId){ alert('Please log in first to save invoices.'); return; }
 
-async function markPaid(id){
-    await updateDoc(doc(db,"invoices",id), { status: "Paid" });
-    loadInvoices();
-}
+         // 1. Collect Items
+         const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
+           const desc = r.querySelector('.it-desc').value || '';
+           const qty = parseFloat(r.querySelector('.it-qty').value)||0;
+           const unit = parseFloat(r.querySelector('.it-unit').value)||0;
+           return {description:desc, qty, unit};
+         }).filter(it => it.description || it.qty || it.unit);
 
-/* ------------------------- OPEN INVOICE ------------------------- */
+         // 2. Create Invoice Object
+         const inv = {
+           clientName: document.getElementById('clientName').value || '',
+           clientPhone: document.getElementById('clientPhone').value || '',
+           clientEmail: document.getElementById('clientEmail').value || '',
+           clientAddress: document.getElementById('clientAddress').value || '',
+           payeeName: document.getElementById('payeeName').value || '',
+           payeeABN: document.getElementById('payeeABN').value || '',
+           payeeAddress: document.getElementById('payeeAddress').value || '',
+           payeePhone: document.getElementById('payeePhone').value || '',
+           payeeEmail: document.getElementById('payeeEmail').value || '',
+           payeeBSB: document.getElementById('payeeBSB').value || '',
+           payeeAccount: document.getElementById('payeeAccount').value || '',
+           invoiceNumber: document.getElementById('invoiceNumber').value || generateInvoiceNumber(),
+           invoiceDate: document.getElementById('invoiceDate').value || today,
+           dueDate: document.getElementById('dueDate').value || '',
+           status: document.getElementById('invoiceStatus').value || 'Unpaid',
+           includeGST: document.getElementById('includeGST').checked,
+           notes: document.getElementById('notes').value || '',
+           logo: logoDataURL,
+           items: items,
+           userId: userId,
+           createdAt: serverTimestamp() // Firestore timestamp
+         };
 
-async function openInvoice(id){
-    const docSnap = await getDoc(doc(db,"invoices",id));
-    if(!docSnap.exists()) return alert("Invoice not found");
-    const inv = docSnap.data();
+         if(!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate){
+           alert('Please fill Client name, Invoice number and Invoice date');
+           return;
+         }
+         
+         try {
+           // 3. Check for unique invoice number for the user
+           const q = query(collection(db, 'invoices'),
+             where('invoiceNumber', '==', inv.invoiceNumber),
+             where('userId', '==', userId)
+           );
+           const existing = await getDocs(q);
 
-    const subtotal = inv.items.reduce((s,it)=> s + it.qty * it.unit, 0);
-    const gstAmount = inv.gst ? subtotal * 0.1 : 0;
-    const total = subtotal + gstAmount;
+           if(existing.docs.length > 0){
+               alert(`Invoice number ${inv.invoiceNumber} already exists for your user account.`);
+               return;
+           }
 
-    const itemsHtml = inv.items.map(it => `
-        <tr>
-          <td>${it.description}</td>
-          <td>${it.qty}</td>
-          <td>${it.unit.toFixed(2)}</td>
-          <td>${(it.qty * it.unit).toFixed(2)}</td>
-        </tr>
-    `).join("");
+           // 4. Save to Firestore
+           await addDoc(collection(db, 'invoices'), inv);
+           alert('Invoice saved successfully to the cloud!');
+           
+           // 5. Reset form
+           document.getElementById('clientName').value='';
+           document.getElementById('clientPhone').value='';
+           document.getElementById('clientEmail').value='';
+           document.getElementById('clientAddress').value='';
+           document.getElementById('invoiceNumber').value=generateInvoiceNumber();
+           document.getElementById('invoiceDate').value=today;
+           document.getElementById('dueDate').value=dueDate.toISOString().split('T')[0];
+           document.getElementById('notes').value='';
+           document.getElementById('includeGST').checked = true;
+           itemsBody.innerHTML=''; addItemRow();
+           
+           // 6. Reload list
+           await loadInvoicesAndRender();
 
-    const html = `
-    <html><head><title>Invoice ${inv.invoiceNumber}</title>
-    <style>
-        body { font-family: Arial; padding: 40px; }
-        table { width: 100%; border-collapse: collapse; margin-top:20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; }
-        th { background:#f0f0f0; }
-    </style>
-    </head><body>
+         } catch(e){
+           console.error("Error saving document: ", e);
+           alert('Failed to save invoice. Check console for details.');
+         }
+       }
 
-    ${inv.logo ? `<img src="${inv.logo}" style="max-width:200px;">` : ""}
-    <h2>Invoice ${inv.invoiceNumber}</h2>
+       document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
 
-    <p><strong>Date:</strong> ${inv.invoiceDate}</p>
-    <p><strong>Due:</strong> ${inv.dueDate}</p>
+       // --- Invoice list rendering (ASYNC CLOUD FUNCTION) ---
+       async function loadInvoicesAndRender(){
+         if(!userId) {
+           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and save invoices.</td></tr>';
+           loginStatus.textContent = 'Logged out';
+           loginStatus.classList.replace('text-green-600', 'text-red-600');
+           return;
+         }
+         loginStatus.textContent = `Logged in as ${auth.currentUser.email}`;
+         loginStatus.classList.replace('text-red-600', 'text-green-600');
 
-    <h3>Bill To</h3>
-    <p>
-        ${inv.clientName}<br>
-        ${inv.clientAddress}<br>
-        ${inv.clientPhone}<br>
-        ${inv.clientEmail}
-    </p>
+         invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
+         
+         try {
+           const filter = document.getElementById('filterStatus').value;
+           const todayForCheck = new Date().toISOString().split('T')[0];
+           
+           // 1. Build Query (filter by user ID is CRITICAL)
+           let q = query(collection(db, 'invoices'),
+                       where('userId', '==', userId)
+                   );
+           // Firestore doesn't support orderBy() on the primary query, but we can sort client-side easily.
+           
+           const snapshot = await getDocs(q);
+           
+           // 2. Map documents to array, including the Firestore document ID
+           invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+           
+           // 3. Sort client-side by creation date (newest first)
+           invoices.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
 
-    <h3>Items</h3>
-    <table>
-       <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
-       <tbody>${itemsHtml}</tbody>
-    </table>
+           // 4. Render
+           invoiceTableBody.innerHTML='';
+           
+           let filteredInvoices = invoices.filter(inv => {
+               // Client-side overdue check
+               if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < todayForCheck) {
+                   inv.status = 'Overdue';
+               }
+               return filter === 'All' || inv.status === filter;
+           });
 
-    <p>Subtotal: ${subtotal.toFixed(2)}</p>
-    <p>GST: ${gstAmount.toFixed(2)}</p>
-    <p><b>Total: ${total.toFixed(2)}</b></p>
+           if(filteredInvoices.length === 0){
+               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No ${filter === 'All' ? '' : filter} invoices found.</td></tr>`;
+           }
 
-    <p>${inv.notes}</p>
+           filteredInvoices.forEach((inv)=>{
+               const tr = document.createElement('tr');
+               tr.className = `border-t border-gray-200 ${inv.status === 'Paid' ? 'status-paid' : inv.status === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
+               tr.innerHTML = `
+                 <td class="p-3">${escapeHtml(inv.invoiceNumber)}</td>
+                 <td class="p-3">${escapeHtml(inv.clientName)}</td>
+                 <td class="p-3">${escapeHtml(inv.invoiceDate)}</td>
+                 <td class="p-3">${escapeHtml(inv.dueDate||'')}</td>
+                 <td class="p-3 font-medium">${escapeHtml(inv.status)}</td>
+                 <td class="p-3 space-x-1">
+                   <button data-id="${inv.id}" class="openBtn bg-blue-500 text-white text-xs p-1 rounded hover:bg-blue-600">Open</button>
+                   <button data-id="${inv.id}" class="payBtn bg-yellow-500 text-white text-xs p-1 rounded hover:bg-yellow-600">Paid</button>
+                   <button data-id="${inv.id}" class="delBtn bg-red-500 text-white text-xs p-1 rounded hover:bg-red-600">Delete</button>
+                 </td>`;
+               invoiceTableBody.appendChild(tr);
+           });
 
-    </body></html>`;
+           // 5. Attach event listeners
+           document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
+           document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>updateInvoiceStatus(e.currentTarget.dataset.id, 'Paid')));
+           document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
+               // Using custom modal is best, but alert() is provided as temporary alternative in this limited environment.
+               if(confirm('Are you sure you want to permanently delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
+           }));
 
-    const w = window.open();
-    w.document.write(html);
-    w.document.close();
-}
+         } catch(e) {
+           console.error("Error loading documents: ", e);
+           invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-red-500 p-4">ERROR loading invoices. Check Firebase rules.</td></tr>';
+         }
+       }
 
-window.openInvoice = openInvoice;
-window.markPaid = markPaid;
-window.addItem = addItem;
+       document.getElementById('filterStatus').addEventListener('change', loadInvoicesAndRender);
 
-</script>
+       // --- Cloud Actions (Update/Delete) ---
+       async function updateInvoiceStatus(id, newStatus){
+         try {
+           const invoiceRef = collection(db, 'invoices', id);
+           await updateDoc(invoiceRef, { status: newStatus });
+           await loadInvoicesAndRender();
+         } catch(e) {
+           console.error("Error updating document: ", e);
+           alert('Failed to update status. Make sure the document ID is valid.');
+         }
+       }
+
+       async function deleteInvoice(id){
+         try {
+           const invoiceRef = collection(db, 'invoices', id);
+           await deleteDoc(invoiceRef);
+           await loadInvoicesAndRender();
+         } catch(e) {
+           console.error("Error deleting document: ", e);
+           alert('Failed to delete invoice.');
+         }
+       }
+
+       // --- Open invoice (New tab - same logic) ---
+       function openInvoice(id){
+         const inv = invoices.find(i => i.id === id);
+         if (!inv) return;
+         
+         const subtotal = inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
+         const gst = inv.includeGST ? subtotal * 0.10 : 0;
+         const total = subtotal + gst;
+
+         const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
+
+         // Basic HTML for printable invoice view
+         const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right} .disclaimer{margin-top:30px;font-size:13px;color:#444;background:#fafafa;padding:12px}</style></head><body>`
+           + `<div class="row"><div>`
+           + (inv.logo?`<img src="${escapeHtml(inv.logo)}" style="max-width:220px;display:block;margin-bottom:10px">`:'')
+           + `<strong>${escapeHtml(inv.payeeName||'')}</strong><br>ABN: ${escapeHtml(inv.payeeABN||'')}<br>${escapeHtml(inv.payeeAddress||'')}<br>Phone: ${escapeHtml(inv.payeePhone||'')}<br>Email: ${escapeHtml(inv.payeeEmail||'')}</div>`
+           + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Status:</strong> <span style="font-weight:bold; color:${inv.status==='Paid'?'green':'red'}">${escapeHtml(inv.status)}</span><br><strong>Pay To:</strong> ${escapeHtml(inv.payeeName||'')}<br><strong>BSB:</strong> ${escapeHtml(inv.payeeBSB||'')}<br><strong>Account:</strong> ${escapeHtml(inv.payeeAccount||'')}</div></div></div>`
+           + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
+           + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
+           + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
+           + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
+           + `<div style="font-weight:bold; font-size:1.2em;">Total: ${formatCurrency(total)}</div></div>`
+           + `<div class="msg"><strong>Notes:</strong> ${escapeHtml(inv.notes)}</div>`
+           + `<div class="disclaimer">All services must be paid within 14 days. A late fee may apply.</div>`
+           + `<div style="margin-top:30px"></div></body></html>`;
+
+         const w = window.open();
+         w.document.write(html);
+         w.document.close();
+       }
+
+
+       // =========================================================================
+       // AUTHENTICATION FUNCTIONS (Exposed globally for HTML onclick)
+       // =========================================================================
+
+       window.signUpUser = function() {
+         const email = loginEmailInput.value;
+         const password = loginPasswordInput.value;
+
+         if (!email || !password) { alert('Please enter an email and password to sign up.'); return; }
+         
+         createUserWithEmailAndPassword(auth, email, password)
+           .then((userCredential) => {
+             alert("Sign Up Successful! You are now logged in.");
+           })
+           .catch((error) => {
+             console.error("Sign Up Error:", error);
+             alert('Sign Up Error: ' + error.message);
+           });
+       }
+
+       window.loginUser = function() {
+         const email = loginEmailInput.value;
+         const password = loginPasswordInput.value;
+
+         if (!email || !password) { alert('Please enter an email and password to log in.'); return; }
+
+         signInWithEmailAndPassword(auth, email, password)
+           .then((userCredential) => {
+             alert("Logged in successfully!");
+           })
+           .catch((error) => {
+             console.error("Login Error:", error);
+             alert('Login Error: ' + error.message);
+           });
+       }
+
+       window.logoutUser = function() {
+         signOut(auth).then(() => {
+           alert("Logged out successfully.");
+         }).catch((error) => {
+           console.error("Logout Error:", error);
+           alert('Logout Error: ' + error.message);
+         });
+       }
+       
+       // =========================================================================
+       // INITIALIZATION
+       // =========================================================================
+
+       // Attach listener to check auth status on load
+       onAuthStateChanged(auth, async (user) => {
+         if (user) {
+           userId = user.uid;
+           loginStatus.textContent = `Logged in as ${user.email}`;
+           loginStatus.classList.replace('text-red-600', 'text-green-600');
+           await loadInvoicesAndRender();
+         } else {
+           userId = null;
+           await loadInvoicesAndRender();
+         }
+       });
+
+       (function init(){
+         loadPayeeFromStorage();
+         if(logoDataURL) logoPreview.src = logoDataURL;
+         if(itemsBody.children.length===0) addItemRow();
+         document.getElementById('clientName').focus();
+       })();
+
+   </script>
+</body>
+</html>
