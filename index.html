@@ -1,93 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Invoice Manager</title>
-<style>
-    body { font-family: Arial; padding: 20px; max-width: 900px; margin: auto; }
-    h2 { margin-top: 40px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background: #eee; }
-    .btn { padding: 8px 14px; margin: 5px; cursor: pointer; }
-    .paid { background: #c8f7c5; }
-    .unpaid { background: #f9f7c2; }
-    .overdue { background: #f7c2c2; }
-</style>
-</head>
-<body>
-
-<h1>Invoice Manager</h1>
-
-<h2>Create Invoice</h2>
-
-<label>Logo: <input type="file" id="logoInput"></label><br><br>
-
-<label>Invoice Number: <input id="invNum"></label><br><br>
-<label>Date: <input type="date" id="invDate"></label><br><br>
-<label>Due Date: <input type="date" id="invDue"></label><br><br>
-
-<h3>Client Info</h3>
-<label>Name: <input id="clientName"></label><br><br>
-<label>Address: <input id="clientAddress"></label><br><br>
-<label>Phone: <input id="clientPhone"></label><br><br>
-<label>Email: <input id="clientEmail"></label><br><br>
-
-<h3>Items</h3>
-<table>
-<thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th></th></tr></thead>
-<tbody id="itemRows"></tbody>
-</table>
-<button class="btn" onclick="addItem()">Add Item</button>
-
-<br><br>
-<label><input type="checkbox" id="gstToggle"> Apply GST (10%)</label>
-<br><br>
-
-<label>Notes:<br>
-<textarea id="notes" style="width:100%;height:120px;"></textarea>
-</label>
-<br><br>
-
-<button class="btn" onclick="saveInvoice()">Save Invoice</button>
-
-<h2>Saved Invoices</h2>
-<table>
-<thead><tr><th>#</th><th>Date</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
-<tbody id="invoiceTable"></tbody>
-</table>
-
-
 <script type="module">
 
 /* ------------------------- FIREBASE IMPORTS ------------------------- */
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { 
   getFirestore, collection, addDoc, getDocs, 
   doc, updateDoc, getDoc 
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { 
-  getStorage, ref, uploadString, getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 /* ------------------------- FIREBASE CONFIG ------------------------- */
-
 const firebaseConfig = {
   apiKey: "AIzaSyDdem4YB76fD0oPrTfKMoozEJGSFi9a7ms",
   authDomain: "invoicemanager205.firebaseapp.com",
-  projectId: "invoicemanager205",
-  storageBucket: "invoicemanager205.appspot.com",
-  messagingSenderId: "495708151568",
-  appId: "1:495708151568:web:bd1f67081b8de55fe00f95",
-  measurementId: "G-HPH3T7BT6Q"
+  projectId: "invoicemanager205"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
-console.log("Firebase connected");
+console.log("Firebase connected (NO STORAGE USED)");
 
 /* ------------------------- ITEM ADDING ------------------------- */
 
@@ -102,14 +32,19 @@ function addItem() {
     document.getElementById("itemRows").appendChild(row);
 }
 
-/* ------------------------- GET LOGO BASE64 ------------------------- */
+/* ------------------------- LOGO (LOCALSTORAGE FIXED) ------------------------- */
 
-let logoBase64 = "";
+let logoBase64 = localStorage.getItem("invoiceLogo") || "";
+
+// Load saved logo back into input preview (optional)
 
 document.getElementById("logoInput").addEventListener("change", function(e){
     const file = e.target.files[0];
     const reader = new FileReader();
-    reader.onload = () => logoBase64 = reader.result;
+    reader.onload = () => {
+        logoBase64 = reader.result;
+        localStorage.setItem("invoiceLogo", logoBase64);
+    };
     reader.readAsDataURL(file);
 });
 
@@ -136,18 +71,10 @@ async function saveInvoice() {
         items,
         gst: gstToggle.checked,
         notes: notes.value,
+        logo: logoBase64,  // ← LOCALSTORAGE LOGO
         status: "Unpaid",
         created: Date.now()
     };
-
-    let logoURL = "";
-    if(logoBase64){
-        const r = ref(storage, `logos/${inv.invoiceNumber}.png`);
-        await uploadString(r, logoBase64, "data_url");
-        logoURL = await getDownloadURL(r);
-    }
-
-    inv.logo = logoURL;
 
     await addDoc(collection(db,"invoices"), inv);
     alert("Invoice Saved!");
@@ -164,12 +91,10 @@ async function loadInvoices() {
     snap.forEach(docSnap => {
         const d = docSnap.data();
 
-        // Calculate total
         const subtotal = d.items.reduce((s,it)=> s + it.qty * it.unit, 0);
         const gst = d.gst ? subtotal * 0.1 : 0;
         const total = subtotal + gst;
 
-        // Status colour
         let cls = "";
         if(d.status === "Paid") cls = "paid";
         else if(new Date(d.dueDate) < new Date() && d.status !== "Paid") cls = "overdue";
@@ -199,7 +124,7 @@ async function markPaid(id){
     loadInvoices();
 }
 
-/* ------------------------- OPEN INVOICE (FIXED VERSION) ------------------------- */
+/* ------------------------- OPEN INVOICE ------------------------- */
 
 async function openInvoice(id){
     const docSnap = await getDoc(doc(db,"invoices",id));
@@ -245,9 +170,7 @@ async function openInvoice(id){
 
     <h3>Items</h3>
     <table>
-       <thead>
-         <tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr>
-       </thead>
+       <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
        <tbody>${itemsHtml}</tbody>
     </table>
 
@@ -269,5 +192,3 @@ window.markPaid = markPaid;
 window.addItem = addItem;
 
 </script>
-</body>
-</html>
