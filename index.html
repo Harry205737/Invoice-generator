@@ -97,11 +97,23 @@
                </table>
                <button id="addItemBtn" class="w-full bg-blue-100 text-blue-700 p-2 rounded-lg font-medium hover:bg-blue-200 transition mb-4">+ Add Item</button>
 
-               <div class="flex justify-between items-center mb-4">
-                   <label class="flex items-center space-x-2 text-sm text-gray-700">
-                       <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500">
-                       <span>Include GST (10%)</span>
-                   </label>
+               <!-- Running Totals Display -->
+               <div class="mb-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                   <div class="flex justify-between font-medium text-gray-700 mb-1">
+                       <span>Subtotal:</span>
+                       <span id="displaySubtotal">$0.00</span>
+                   </div>
+                   <div class="flex justify-between font-medium text-gray-700 border-b pb-2 mb-2">
+                       <label class="flex items-center space-x-2 text-sm">
+                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500" onchange="updateGrandTotal()">
+                           <span>GST (10%):</span>
+                       </label>
+                       <span id="displayGST">$0.00</span>
+                   </div>
+                   <div class="flex justify-between font-bold text-lg text-indigo-700">
+                       <span>GRAND TOTAL:</span>
+                       <span id="displayGrandTotal">$0.00</span>
+                   </div>
                </div>
                
                <textarea id="notes" placeholder="Notes (e.g., Payment Terms, Disclaimers)" class="input-field mb-6 h-20"></textarea>
@@ -114,15 +126,35 @@
            <div id="invoice-list">
                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Saved Invoices</h2>
 
-               <div class="mb-4">
-                   <label for="filterStatus" class="text-sm font-medium text-gray-700 mr-2">Filter by Status:</label>
-                   <select id="filterStatus" class="p-2 border rounded-lg">
-                       <option value="All">All</option>
-                       <option value="Unpaid">Unpaid</option>
-                       <option value="Paid">Paid</option>
-                       <option value="Overdue">Overdue</option>
-                       <option value="Cancelled">Cancelled</option>
-                   </select>
+               <div class="flex flex-wrap gap-4 mb-6">
+                   <div class="flex items-center space-x-2">
+                       <label for="filterStatus" class="text-sm font-medium text-gray-700">Status:</label>
+                       <select id="filterStatus" class="p-2 border rounded-lg" onchange="loadInvoicesAndRender()">
+                           <option value="All">All</option>
+                           <option value="Unpaid">Unpaid</option>
+                           <option value="Paid">Paid</option>
+                           <option value="Overdue">Overdue</option>
+                           <option value="Cancelled">Cancelled</option>
+                       </select>
+                   </div>
+                   <div class="flex items-center space-x-2">
+                       <label for="filterYear" class="text-sm font-medium text-gray-700">Financial Year:</label>
+                       <select id="filterYear" class="p-2 border rounded-lg" onchange="loadInvoicesAndRender()">
+                           <!-- Options populated by JS -->
+                       </select>
+                   </div>
+               </div>
+
+               <!-- Invoice Summary Block -->
+               <div id="invoice-summary" class="bg-white border rounded-lg shadow-md p-4 mb-6 grid grid-cols-2 gap-4">
+                   <div class="p-3 bg-blue-50 rounded-lg">
+                       <p class="text-xs font-medium text-blue-600 uppercase">Total Invoiced Value</p>
+                       <p id="summaryTotalAll" class="text-xl font-bold text-gray-800">$0.00</p>
+                   </div>
+                   <div class="p-3 bg-red-50 rounded-lg">
+                       <p class="text-xs font-medium text-red-600 uppercase">Total Still Unpaid</p>
+                       <p id="summaryTotalUnpaid" class="text-xl font-bold text-gray-800">$0.00</p>
+                   </div>
                </div>
 
                <div class="overflow-x-auto rounded-lg border">
@@ -156,7 +188,6 @@
    <script type="module">
        // =========================================================================
        // FIREBASE V9 MODULAR SDK IMPORTS
-       // NOTE: The 'doc' function is now imported to correctly reference single documents.
        // =========================================================================
        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
        import {
@@ -176,7 +207,7 @@
          updateDoc,
          deleteDoc,
          serverTimestamp,
-         doc // <-- CORRECTED IMPORT
+         doc
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
        // =========================================================================
@@ -206,6 +237,14 @@
        const loginStatus = document.getElementById('login-status');
        const loginEmailInput = document.getElementById('loginEmail');
        const loginPasswordInput = document.getElementById('loginPassword');
+       
+       const displaySubtotal = document.getElementById('displaySubtotal');
+       const displayGST = document.getElementById('displayGST');
+       const displayGrandTotal = document.getElementById('displayGrandTotal');
+       const filterYear = document.getElementById('filterYear');
+
+       const summaryTotalAll = document.getElementById('summaryTotalAll');
+       const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
 
        // --- State and helpers (Logo and Payee still use Local Storage for simplicity) ---
        let logoDataURL = localStorage.getItem('invoiceLogo')||'';
@@ -221,6 +260,23 @@
        function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
        function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
        function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
+
+       /**
+        * Determines the Australian financial year (Jul 1 - Jun 30) for a given date.
+        */
+       function getFinancialYear(dateString) {
+           if (!dateString) return 'N/A';
+           const date = new Date(dateString + 'T00:00:00');
+           const year = date.getFullYear();
+           const month = date.getMonth(); // 0 = Jan, 6 = Jul
+           
+           // If month is July (6) or later, it's the current year to next year.
+           if (month >= 6) {
+               return `${year}-${year + 1}`;
+           } else {
+               return `${year - 1}-${year}`;
+           }
+       }
        
        function savePayeeToStorage(){
          ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
@@ -248,6 +304,30 @@
          r.readAsDataURL(f);
        });
 
+       // --- Grand Total Calculation ---
+       function calculateCurrentItemsTotal() {
+           let currentSubtotal = 0;
+           Array.from(itemsBody.querySelectorAll('tr')).forEach(r => {
+               const qtyInput = r.querySelector('.it-qty');
+               const unitInput = r.querySelector('.it-unit');
+               const q = parseFloat(qtyInput.value || 0);
+               const u = parseFloat(unitInput.value || 0);
+               currentSubtotal += q * u;
+           });
+           return currentSubtotal;
+       }
+
+       window.updateGrandTotal = function() {
+           const subtotal = calculateCurrentItemsTotal();
+           const includeGST = document.getElementById('includeGST').checked;
+           const gst = includeGST ? subtotal * 0.10 : 0;
+           const grandTotal = subtotal + gst;
+
+           displaySubtotal.textContent = formatCurrency(subtotal);
+           displayGST.textContent = formatCurrency(gst);
+           displayGrandTotal.textContent = formatCurrency(grandTotal);
+       }
+
        // --- Items ---
        function addItemRow(desc='', qty=1, unit=0){
          const tr = document.createElement('tr');
@@ -260,18 +340,24 @@
            <td class="p-2"><button type="button" class="remove text-red-500 hover:text-red-700 transition font-medium">X</button></td>`;
          itemsBody.appendChild(tr);
 
-         tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); });
+         tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); updateGrandTotal(); });
+         
+         // Initial total update
+         updateGrandTotal();
        }
 
-       function updateTotalRow(tr) {
+       window.updateTotalRow = function(tr) {
            const qtyInput = tr.querySelector('.it-qty');
            const unitInput = tr.querySelector('.it-unit');
            const q = parseFloat(qtyInput.value || 0);
            const u = parseFloat(unitInput.value || 0);
            tr.querySelector('.it-total').textContent = formatCurrency(q * u);
+           updateGrandTotal(); // Call to update the running grand total
        }
 
        document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
+       document.getElementById('includeGST').addEventListener('change', updateGrandTotal);
+
 
        // --- Save invoice (ASYNC CLOUD FUNCTION) ---
        async function saveInvoice(){
@@ -284,6 +370,12 @@
            const unit = parseFloat(r.querySelector('.it-unit').value)||0;
            return {description:desc, qty, unit};
          }).filter(it => it.description || it.qty || it.unit);
+
+         // Calculate final totals to save
+         const subtotal = calculateCurrentItemsTotal();
+         const includeGST = document.getElementById('includeGST').checked;
+         const gst = includeGST ? subtotal * 0.10 : 0;
+         const total = subtotal + gst;
 
          // 2. Create Invoice Object
          const inv = {
@@ -302,10 +394,12 @@
            invoiceDate: document.getElementById('invoiceDate').value || today,
            dueDate: document.getElementById('dueDate').value || '',
            status: document.getElementById('invoiceStatus').value || 'Unpaid',
-           includeGST: document.getElementById('includeGST').checked,
+           includeGST: includeGST,
            notes: document.getElementById('notes').value || '',
            logo: logoDataURL,
            items: items,
+           subtotal: subtotal,
+           total: total, // Save the calculated total value
            userId: userId,
            createdAt: serverTimestamp() // Firestore timestamp
          };
@@ -359,6 +453,8 @@
        async function loadInvoicesAndRender(){
          if(!userId) {
            invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and save invoices.</td></tr>';
+           summaryTotalAll.textContent = formatCurrency(0);
+           summaryTotalUnpaid.textContent = formatCurrency(0);
            loginStatus.textContent = 'Logged out';
            loginStatus.classList.replace('text-green-600', 'text-red-600');
            return;
@@ -369,7 +465,8 @@
          invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
          
          try {
-           const filter = document.getElementById('filterStatus').value;
+           const filterStatus = document.getElementById('filterStatus').value;
+           const filterYearValue = document.getElementById('filterYear').value;
            const todayForCheck = new Date().toISOString().split('T')[0];
            
            // 1. Build Query (filter by user ID is CRITICAL)
@@ -383,21 +480,48 @@
            invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
            
            // 3. Sort client-side by creation date (newest first)
-           invoices.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+           invoices.sort((a, b) => {
+               const aTime = b.createdAt ? b.createdAt.seconds : 0;
+               const bTime = a.createdAt ? a.createdAt.seconds : 0;
+               return aTime - bTime;
+           });
 
-           // 4. Render
-           invoiceTableBody.innerHTML='';
-           
+           // 4. Apply Filters and calculate Overdue status
+           let totalAll = 0;
+           let totalUnpaid = 0;
+
            let filteredInvoices = invoices.filter(inv => {
-               // Client-side overdue check
+               // Determine overdue status
                if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < todayForCheck) {
                    inv.status = 'Overdue';
                }
-               return filter === 'All' || inv.status === filter;
+
+               // Check Financial Year filter
+               const isCorrectYear = filterYearValue === 'All' || getFinancialYear(inv.invoiceDate) === filterYearValue;
+
+               // Check Status filter
+               const isCorrectStatus = filterStatus === 'All' || inv.status === filterStatus;
+
+               // Calculate Totals based only on year filter
+               if (isCorrectYear) {
+                   totalAll += inv.total || 0; // Use the saved total
+                   if (inv.status !== 'Paid' && inv.status !== 'Cancelled') {
+                       totalUnpaid += inv.total || 0;
+                   }
+               }
+
+               return isCorrectYear && isCorrectStatus;
            });
 
+           // 5. Update Summary Display
+           summaryTotalAll.textContent = formatCurrency(totalAll);
+           summaryTotalUnpaid.textContent = formatCurrency(totalUnpaid);
+           
+           // 6. Render Table
+           invoiceTableBody.innerHTML='';
+           
            if(filteredInvoices.length === 0){
-               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No ${filter === 'All' ? '' : filter} invoices found.</td></tr>`;
+               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No matching invoices found.</td></tr>`;
            }
 
            filteredInvoices.forEach((inv)=>{
@@ -417,11 +541,10 @@
                invoiceTableBody.appendChild(tr);
            });
 
-           // 5. Attach event listeners
+           // 7. Attach event listeners
            document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
            document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>updateInvoiceStatus(e.currentTarget.dataset.id, 'Paid')));
            document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
-               // Using custom modal is best, but alert() is provided as temporary alternative in this limited environment.
                if(confirm('Are you sure you want to permanently delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
            }));
 
@@ -431,12 +554,10 @@
          }
        }
 
-       document.getElementById('filterStatus').addEventListener('change', loadInvoicesAndRender);
-
        // --- Cloud Actions (Update/Delete) ---
        async function updateInvoiceStatus(id, newStatus){
          try {
-           // CORRECTED: Use doc() to get a reference to a single document
+           // Corrected: Use doc() to get a reference to a single document
            const invoiceRef = doc(db, 'invoices', id);
            await updateDoc(invoiceRef, { status: newStatus });
            alert('Invoice status updated successfully!');
@@ -449,7 +570,7 @@
 
        async function deleteInvoice(id){
          try {
-           // CORRECTED: Use doc() to get a reference to a single document
+           // Corrected: Use doc() to get a reference to a single document
            const invoiceRef = doc(db, 'invoices', id);
            await deleteDoc(invoiceRef);
            alert('Invoice deleted successfully!');
@@ -465,9 +586,9 @@
          const inv = invoices.find(i => i.id === id);
          if (!inv) return;
          
-         const subtotal = inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
+         const subtotal = inv.subtotal || inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
          const gst = inv.includeGST ? subtotal * 0.10 : 0;
-         const total = subtotal + gst;
+         const total = inv.total || (subtotal + gst);
 
          const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
 
@@ -489,6 +610,21 @@
          const w = window.open();
          w.document.write(html);
          w.document.close();
+       }
+
+       // --- Filter Setup ---
+       function populateFinancialYearFilter() {
+           const currentYear = new Date().getFullYear();
+           const yearOptions = ['All'];
+           
+           // Generate last 5 years + current year + next year
+           for(let i = currentYear - 5; i <= currentYear + 1; i++){
+               yearOptions.push(`${i}-${i + 1}`);
+           }
+
+           filterYear.innerHTML = yearOptions.map(y =>
+               `<option value="${y}" ${y === 'All' ? 'selected' : ''}>${y}</option>`
+           ).join('');
        }
 
 
@@ -520,7 +656,6 @@
 
          signInWithEmailAndPassword(auth, email, password)
            .then((userCredential) => {
-             // Success. The onAuthStateChanged listener handles the UI update.
              alert("Logged in successfully!");
            })
            .catch((error) => {
@@ -560,6 +695,7 @@
          if(logoDataURL) logoPreview.src = logoDataURL;
          if(itemsBody.children.length===0) addItemRow();
          document.getElementById('clientName').focus();
+         populateFinancialYearFilter();
        })();
 
    </script>
