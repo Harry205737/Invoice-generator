@@ -1,277 +1,273 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Invoice Generator (Firebase)</title>
+<title>Invoice Manager</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;padding:20px;background:#f5f5f7}
-  h1{margin-top:0}
-  input,textarea,select{width:100%;padding:8px;margin:6px 0;box-sizing:border-box}
-  button{padding:8px 10px;margin:6px 4px;cursor:pointer}
-  .flex{display:flex;gap:16px}
-  .col{flex:1}
-  table{width:100%;border-collapse:collapse;background:#fff}
-  th,td{border:1px solid #ddd;padding:8px}
-  th{background:#f0f0f0}
-  .status-paid{background:#c8f7c5}
-  .status-unpaid{background:#fff5b0}
-  .status-overdue{background:#f7c5c5}
-  #logoPreview{max-width:180px;display:block;margin:8px 0}
+    body { font-family: Arial; padding: 20px; max-width: 900px; margin: auto; }
+    h2 { margin-top: 40px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+    .btn { padding: 8px 14px; margin: 5px; cursor: pointer; }
+    .paid { background: #c8f7c5; }
+    .unpaid { background: #f9f7c2; }
+    .overdue { background: #f7c2c2; }
 </style>
 </head>
 <body>
-<h1>Invoice Generator (Firebase)</h1>
 
-<h3>Upload Logo</h3>
-<input type="file" id="logoInput" accept="image/*">
-<img id="logoPreview" alt="Logo preview">
+<h1>Invoice Manager</h1>
 
-<div class="flex">
-  <div class="col">
-    <h3>Bill To</h3>
-    <input id="clientName" placeholder="Client name">
-    <input id="clientPhone" placeholder="Client phone">
-    <input id="clientEmail" placeholder="Client email">
-    <input id="clientAddress" placeholder="Client address">
-  </div>
+<h2>Create Invoice</h2>
 
-  <div class="col">
-    <h3>Payee (Your details)</h3>
-    <input id="payeeName" placeholder="Business name" value="Baw Baw Aerial Services">
-    <input id="payeeABN" placeholder="ABN">
-    <input id="payeeAddress" placeholder="Business address">
-    <input id="payeePhone" placeholder="Phone">
-    <input id="payeeEmail" placeholder="Email">
-    <input id="payeeBSB" placeholder="BSB">
-    <input id="payeeAccount" placeholder="Account number">
-  </div>
-</div>
+<label>Logo: <input type="file" id="logoInput"></label><br><br>
 
-<h3>Invoice Details</h3>
-<input id="invoiceNumber" placeholder="Invoice number">
-<label for="invoiceDate">Invoice date</label>
-<input id="invoiceDate" type="date">
-<label for="dueDate">Due date</label>
-<input id="dueDate" type="date">
-<select id="invoiceStatus">
-  <option value="Unpaid">Unpaid</option>
-  <option value="Paid">Paid</option>
-  <option value="Overdue">Overdue</option>
-</select>
+<label>Invoice Number: <input id="invNum"></label><br><br>
+<label>Date: <input type="date" id="invDate"></label><br><br>
+<label>Due Date: <input type="date" id="invDue"></label><br><br>
 
-<label><input type="checkbox" id="gstToggle" checked> Include GST (10%)</label>
+<h3>Client Info</h3>
+<label>Name: <input id="clientName"></label><br><br>
+<label>Address: <input id="clientAddress"></label><br><br>
+<label>Phone: <input id="clientPhone"></label><br><br>
+<label>Email: <input id="clientEmail"></label><br><br>
 
 <h3>Items</h3>
-<table id="itemsTable">
-  <thead>
-    <tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th><th></th></tr>
-  </thead>
-  <tbody id="itemsBody"></tbody>
+<table>
+<thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th></th></tr></thead>
+<tbody id="itemRows"></tbody>
 </table>
-<button id="addItemBtn">Add item</button>
+<button class="btn" onclick="addItem()">Add Item</button>
 
-<h3>Notes</h3>
-<textarea id="notes" rows="3" placeholder="Notes to appear on invoice"></textarea>
+<br><br>
+<label><input type="checkbox" id="gstToggle"> Apply GST (10%)</label>
+<br><br>
 
-<button id="saveInvoiceBtn">Save invoice</button>
+<label>Notes:<br>
+<textarea id="notes" style="width:100%;height:120px;"></textarea>
+</label>
+<br><br>
 
-<hr>
-<h2>Saved invoices</h2>
-<label>Filter by status</label>
-<select id="filterStatus"><option value="All">All</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option><option value="Overdue">Overdue</option></select>
+<button class="btn" onclick="saveInvoice()">Save Invoice</button>
 
-<table id="invoiceTable">
-  <thead>
-    <tr><th>#</th><th>Client</th><th>Date</th><th>Due</th><th>Status</th><th>Actions</th></tr>
-  </thead>
-  <tbody></tbody>
+<h2>Saved Invoices</h2>
+<table>
+<thead><tr><th>#</th><th>Date</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
+<tbody id="invoiceTable"></tbody>
 </table>
+
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-  import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
-  // --- Firebase config ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyDdem4YB76fD0oPrTfKMoozEJGSFi9a7ms",
-    authDomain: "invoicemanager205.firebaseapp.com",
-    projectId: "invoicemanager205",
-    storageBucket: "invoicemanager205.firebasestorage.app",
-    messagingSenderId: "495708151568",
-    appId: "1:495708151568:web:bd1f67081b8de55fe00f95",
-    measurementId: "G-HPH3T7BT6Q"
-  };
+/* ------------------------- FIREBASE IMPORTS ------------------------- */
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc, getDocs, 
+  doc, updateDoc, getDoc 
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { 
+  getStorage, ref, uploadString, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
-  let logoBase64 = '';
-  const itemsBody = document.getElementById('itemsBody');
-  const logoPreview = document.getElementById('logoPreview');
+/* ------------------------- FIREBASE CONFIG ------------------------- */
 
-  // --- Logo upload ---
-  document.getElementById('logoInput').addEventListener('change', e=>{
-    const f = e.target.files[0];
-    if(!f) return;
-    const r = new FileReader();
-    r.onload = ev => {
-      logoBase64 = ev.target.result;
-      logoPreview.src = logoBase64;
-    };
-    r.readAsDataURL(f);
-  });
+const firebaseConfig = {
+  apiKey: "AIzaSyDdem4YB76fD0oPrTfKMoozEJGSFi9a7ms",
+  authDomain: "invoicemanager205.firebaseapp.com",
+  projectId: "invoicemanager205",
+  storageBucket: "invoicemanager205.appspot.com",
+  messagingSenderId: "495708151568",
+  appId: "1:495708151568:web:bd1f67081b8de55fe00f95",
+  measurementId: "G-HPH3T7BT6Q"
+};
 
-  // --- Items ---
-  function addItemRow(desc='', qty=1, unit=0){
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input class="it-desc" value="${desc}"></td>
-      <td><input class="it-qty" type="number" min="0" value="${qty}"></td>
-      <td><input class="it-unit" type="number" min="0" step="0.01" value="${unit}"></td>
-      <td class="it-total">${(qty*unit).toFixed(2)}</td>
-      <td><button class="remove">Remove</button></td>`;
-    itemsBody.appendChild(tr);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-    tr.querySelector('.remove').addEventListener('click', ()=>tr.remove());
-    const qtyInput = tr.querySelector('.it-qty');
-    const unitInput = tr.querySelector('.it-unit');
-    function updateTotal(){
-      const q = parseFloat(qtyInput.value||0);
-      const u = parseFloat(unitInput.value||0);
-      tr.querySelector('.it-total').textContent = (q*u).toFixed(2);
-    }
-    qtyInput.addEventListener('input', updateTotal);
-    unitInput.addEventListener('input', updateTotal);
-  }
+console.log("Firebase connected");
 
-  document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
-  addItemRow();
+/* ------------------------- ITEM ADDING ------------------------- */
 
-  // --- Save invoice ---
-  async function saveInvoice(){
-    const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
-      return {
-        description: r.querySelector('.it-desc').value,
-        qty: parseFloat(r.querySelector('.it-qty').value)||0,
-        unit: parseFloat(r.querySelector('.it-unit').value)||0
-      };
-    }).filter(it=>it.description || it.qty || it.unit);
+function addItem() {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+       <td><input class="desc" style="width:100%"></td>
+       <td><input class="qty" type="number" step="1" style="width:80px"></td>
+       <td><input class="unit" type="number" step="0.01" style="width:100px"></td>
+       <td><button onclick="this.parentNode.parentNode.remove()">X</button></td>
+    `;
+    document.getElementById("itemRows").appendChild(row);
+}
 
-    const gstEnabled = document.getElementById('gstToggle').checked;
-    const invoiceData = {
-      clientName: document.getElementById('clientName').value,
-      clientPhone: document.getElementById('clientPhone').value,
-      clientEmail: document.getElementById('clientEmail').value,
-      clientAddress: document.getElementById('clientAddress').value,
-      payeeName: document.getElementById('payeeName').value,
-      payeeABN: document.getElementById('payeeABN').value,
-      payeeAddress: document.getElementById('payeeAddress').value,
-      payeePhone: document.getElementById('payeePhone').value,
-      payeeEmail: document.getElementById('payeeEmail').value,
-      payeeBSB: document.getElementById('payeeBSB').value,
-      payeeAccount: document.getElementById('payeeAccount').value,
-      invoiceNumber: document.getElementById('invoiceNumber').value || 'INV-' + Date.now(),
-      invoiceDate: document.getElementById('invoiceDate').value,
-      dueDate: document.getElementById('dueDate').value,
-      status: document.getElementById('invoiceStatus').value,
-      items: items,
-      gst: gstEnabled,
-      notes: document.getElementById('notes').value
-    };
+/* ------------------------- GET LOGO BASE64 ------------------------- */
 
-    try {
-      let logoURL = '';
-      if(logoBase64){
-        const logoRef = ref(storage, `logos/${invoiceData.invoiceNumber}.png`);
-        await uploadString(logoRef, logoBase64, 'data_url');
-        logoURL = await getDownloadURL(logoRef);
-      }
-      await addDoc(collection(db,"invoices"),{...invoiceData, logo: logoURL});
-      alert("Invoice saved!");
-      resetForm();
-      await loadInvoices();
-    } catch(e){ console.error(e); alert("Error saving invoice"); }
-  }
+let logoBase64 = "";
 
-  document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
+document.getElementById("logoInput").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = () => logoBase64 = reader.result;
+    reader.readAsDataURL(file);
+});
 
-  // --- Load invoices ---
-  async function loadInvoices(){
-    const filter = document.getElementById('filterStatus').value;
-    const snapshot = await getDocs(collection(db,"invoices"));
-    const tbody = document.querySelector('#invoiceTable tbody');
-    tbody.innerHTML='';
-    snapshot.docs.forEach(docSnap=>{
-      const inv = docSnap.data();
-      const id = docSnap.id;
-      let status = inv.status;
-      const today = new Date().toISOString().split('T')[0];
-      if(status !== "Paid" && inv.dueDate && inv.dueDate < today) status="Overdue";
-      if(filter!=="All" && filter!==status) return;
-      const tr = document.createElement('tr');
-      tr.className = status==="Paid"?"status-paid":status==="Overdue"?"status-overdue":"status-unpaid";
-      tr.innerHTML = `<td>${inv.invoiceNumber}</td><td>${inv.clientName}</td><td>${inv.invoiceDate}</td><td>${inv.dueDate||''}</td><td>${status}</td>
-      <td>
-        <button data-id="${id}" class="openBtn">Open</button>
-        <button data-id="${id}" class="payBtn">Mark Paid</button>
-        <button data-id="${id}" class="delBtn">Delete</button>
-      </td>`;
-      tbody.appendChild(tr);
+/* ------------------------- SAVE INVOICE ------------------------- */
+
+async function saveInvoice() {
+
+    let items = [];
+    document.querySelectorAll("#itemRows tr").forEach(row=>{
+        const desc = row.querySelector(".desc").value;
+        const qty = Number(row.querySelector(".qty").value);
+        const unit = Number(row.querySelector(".unit").value);
+        if(desc) items.push({ description: desc, qty, unit });
     });
-    // Attach handlers
-    document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
-    document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>markPaid(e.currentTarget.dataset.id)));
-    document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>deleteInvoice(e.currentTarget.dataset.id)));
-  }
 
-  document.getElementById('filterStatus').addEventListener('change', loadInvoices);
+    const inv = {
+        invoiceNumber: invNum.value,
+        invoiceDate: invDate.value,
+        dueDate: invDue.value,
+        clientName: clientName.value,
+        clientAddress: clientAddress.value,
+        clientPhone: clientPhone.value,
+        clientEmail: clientEmail.value,
+        items,
+        gst: gstToggle.checked,
+        notes: notes.value,
+        status: "Unpaid",
+        created: Date.now()
+    };
 
-  // --- Invoice actions ---
-  async function markPaid(id){
-    await updateDoc(doc(db,"invoices",id),{status:"Paid"});
+    let logoURL = "";
+    if(logoBase64){
+        const r = ref(storage, `logos/${inv.invoiceNumber}.png`);
+        await uploadString(r, logoBase64, "data_url");
+        logoURL = await getDownloadURL(r);
+    }
+
+    inv.logo = logoURL;
+
+    await addDoc(collection(db,"invoices"), inv);
+    alert("Invoice Saved!");
     loadInvoices();
-  }
-  async function deleteInvoice(id){
-    if(confirm("Delete invoice?")){ await deleteDoc(doc(db,"invoices",id)); loadInvoices(); }
-  }
-  async function openInvoice(id){
+}
+
+/* ------------------------- LOAD INVOICES ------------------------- */
+
+async function loadInvoices() {
     const snap = await getDocs(collection(db,"invoices"));
-    const docSnap = snap.docs.find(d=>d.id===id);
-    if(!docSnap) return;
+    const table = document.getElementById("invoiceTable");
+    table.innerHTML = "";
+
+    snap.forEach(docSnap => {
+        const d = docSnap.data();
+
+        // Calculate total
+        const subtotal = d.items.reduce((s,it)=> s + it.qty * it.unit, 0);
+        const gst = d.gst ? subtotal * 0.1 : 0;
+        const total = subtotal + gst;
+
+        // Status colour
+        let cls = "";
+        if(d.status === "Paid") cls = "paid";
+        else if(new Date(d.dueDate) < new Date() && d.status !== "Paid") cls = "overdue";
+        else cls = "unpaid";
+
+        table.innerHTML += `
+          <tr class="${cls}">
+            <td>${d.invoiceNumber}</td>
+            <td>${d.invoiceDate}</td>
+            <td>${d.status}</td>
+            <td>${total.toFixed(2)}</td>
+            <td>
+                <button onclick="openInvoice('${docSnap.id}')">Open</button>
+                <button onclick="markPaid('${docSnap.id}')">Paid</button>
+            </td>
+          </tr>
+        `;
+    });
+}
+
+loadInvoices();
+
+/* ------------------------- MARK AS PAID ------------------------- */
+
+async function markPaid(id){
+    await updateDoc(doc(db,"invoices",id), { status: "Paid" });
+    loadInvoices();
+}
+
+/* ------------------------- OPEN INVOICE (FIXED VERSION) ------------------------- */
+
+async function openInvoice(id){
+    const docSnap = await getDoc(doc(db,"invoices",id));
+    if(!docSnap.exists()) return alert("Invoice not found");
     const inv = docSnap.data();
-    const subtotal = inv.items.reduce((s,it)=>s + it.qty*it.unit,0);
-    const gstAmount = inv.gst ? subtotal*0.1 : 0;
-    const total = subtotal+gstAmount;
-    const itemsHtml = inv.items.map(it=>`<tr><td>${it.description}</td><td>${it.qty}</td><td>${it.unit.toFixed(2)}</td><td>${(it.qty*it.unit).toFixed(2)}</td></tr>`).join('');
-    const html = `<html><head><title>Invoice ${inv.invoiceNumber}</title>
-      <style>body{font-family:Arial;padding:40px} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0}</style></head><body>
-      <div>${inv.logo?`<img src="${inv.logo}" style="max-width:220px;">`:''}</div>
-      <h2>Invoice: ${inv.invoiceNumber}</h2>
-      <div><strong>Date:</strong> ${inv.invoiceDate} | <strong>Due:</strong> ${inv.dueDate||''}</div>
-      <h3>Bill To</h3><div>${inv.clientName}<br>${inv.clientAddress}<br>${inv.clientPhone}<br>${inv.clientEmail}</div>
-      <h3>Items</h3><table><thead><tr><th>Description</th><th>Qty/Hrs</th><th>Unit</th><th>Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>
-      <div>Subtotal: ${subtotal.toFixed(2)}<br>GST: ${gstAmount.toFixed(2)}<br><strong>Total: ${total.toFixed(2)}</strong></div>
-      <div>${inv.notes}</div></body></html>`;
-    const w = window.open(); w.document.write(html); w.document.close();
-  }
 
-  function resetForm(){
-    document.getElementById('clientName').value='';
-    document.getElementById('clientPhone').value='';
-    document.getElementById('clientEmail').value='';
-    document.getElementById('clientAddress').value='';
-    document.getElementById('invoiceNumber').value='';
-    document.getElementById('invoiceDate').value='';
-    document.getElementById('dueDate').value='';
-    document.getElementById('notes').value='';
-    itemsBody.innerHTML=''; addItemRow();
-  }
+    const subtotal = inv.items.reduce((s,it)=> s + it.qty * it.unit, 0);
+    const gstAmount = inv.gst ? subtotal * 0.1 : 0;
+    const total = subtotal + gstAmount;
 
-  // --- Init ---
-  loadInvoices();
+    const itemsHtml = inv.items.map(it => `
+        <tr>
+          <td>${it.description}</td>
+          <td>${it.qty}</td>
+          <td>${it.unit.toFixed(2)}</td>
+          <td>${(it.qty * it.unit).toFixed(2)}</td>
+        </tr>
+    `).join("");
+
+    const html = `
+    <html><head><title>Invoice ${inv.invoiceNumber}</title>
+    <style>
+        body { font-family: Arial; padding: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-top:20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+        th { background:#f0f0f0; }
+    </style>
+    </head><body>
+
+    ${inv.logo ? `<img src="${inv.logo}" style="max-width:200px;">` : ""}
+    <h2>Invoice ${inv.invoiceNumber}</h2>
+
+    <p><strong>Date:</strong> ${inv.invoiceDate}</p>
+    <p><strong>Due:</strong> ${inv.dueDate}</p>
+
+    <h3>Bill To</h3>
+    <p>
+        ${inv.clientName}<br>
+        ${inv.clientAddress}<br>
+        ${inv.clientPhone}<br>
+        ${inv.clientEmail}
+    </p>
+
+    <h3>Items</h3>
+    <table>
+       <thead>
+         <tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr>
+       </thead>
+       <tbody>${itemsHtml}</tbody>
+    </table>
+
+    <p>Subtotal: ${subtotal.toFixed(2)}</p>
+    <p>GST: ${gstAmount.toFixed(2)}</p>
+    <p><b>Total: ${total.toFixed(2)}</b></p>
+
+    <p>${inv.notes}</p>
+
+    </body></html>`;
+
+    const w = window.open();
+    w.document.write(html);
+    w.document.close();
+}
+
+window.openInvoice = openInvoice;
+window.markPaid = markPaid;
+window.addItem = addItem;
+
 </script>
 </body>
 </html>
