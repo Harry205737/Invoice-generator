@@ -41,9 +41,10 @@
        </div>
 
        <div class="grid lg:grid-cols-2 gap-10">
-           <!-- Invoice Creation Form -->
+           <!-- Invoice Creation/Edit Form -->
            <div id="invoice-form">
-               <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Invoice</h2>
+               <h2 id="formTitle" class="text-2xl font-semibold text-gray-800 mb-4">Create New Invoice</h2>
+               <input type="hidden" id="editInvoiceId" value="">
                
                <!-- Logo and Payee Details -->
                <div class="mb-6 p-4 border rounded-lg bg-gray-50">
@@ -78,7 +79,7 @@
 
                <h3 class="text-lg font-medium mb-3">Client Details (Bill To)</h3>
                <input type="text" id="clientName" placeholder="Client Name" class="input-field mb-2">
-               <textarea id="clientAddress" placeholder="Client Address" class="input-field mb-2"></textarea>
+               <textarea id="clientAddress" placeholder="Client Address" placeholder="Client Address" class="input-field mb-2"></textarea>
                <input type="text" id="clientPhone" placeholder="Client Phone" class="input-field mb-2">
                <input type="email" id="clientEmail" placeholder="Client Email" class="input-field">
                
@@ -118,7 +119,10 @@
                
                <textarea id="notes" placeholder="Notes (e.g., Payment Terms, Disclaimers)" class="input-field mb-6 h-20"></textarea>
 
-               <button id="saveInvoiceBtn" class="w-full bg-green-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-green-700 transition">💾 Save Invoice to Cloud</button>
+               <div class="flex space-x-3">
+                   <button id="saveInvoiceBtn" class="w-full bg-green-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-green-700 transition">💾 Save Invoice to Cloud</button>
+                   <button id="cancelEditBtn" class="w-auto bg-gray-300 text-gray-800 p-3 rounded-lg font-medium hover:bg-gray-400 transition" style="display:none;">New / Cancel Edit</button>
+               </div>
 
            </div>
 
@@ -205,6 +209,7 @@
          getDocs,
          addDoc,
          updateDoc,
+         setDoc, // Added setDoc for potential future use or consistency
          deleteDoc,
          serverTimestamp,
          doc
@@ -242,6 +247,10 @@
        const displayGST = document.getElementById('displayGST');
        const displayGrandTotal = document.getElementById('displayGrandTotal');
        const filterYear = document.getElementById('filterYear');
+       const saveInvoiceBtn = document.getElementById('saveInvoiceBtn');
+       const cancelEditBtn = document.getElementById('cancelEditBtn');
+       const formTitle = document.getElementById('formTitle');
+       const editInvoiceIdInput = document.getElementById('editInvoiceId');
 
        const summaryTotalAll = document.getElementById('summaryTotalAll');
        const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
@@ -251,12 +260,11 @@
        
        // --- Set initial date values for better UX ---
        const today = new Date().toISOString().split('T')[0];
-       document.getElementById('invoiceDate').value = today;
-       const dueDate = new Date();
-       dueDate.setDate(dueDate.getDate() + 14);
-       document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
-
-       // --- UTILITY FUNCTIONS ---
+       const dueDateDefault = new Date();
+       dueDateDefault.setDate(dueDateDefault.getDate() + 14);
+       const dueDateValue = dueDateDefault.toISOString().split('T')[0];
+       
+       // --- Utility Functions ---
        function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
        function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
        function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
@@ -342,7 +350,9 @@
 
          tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); updateGrandTotal(); });
          
-         // Initial total update
+         // Add input change listeners to trigger total update
+         tr.querySelectorAll('input').forEach(input => input.addEventListener('input', updateGrandTotal));
+
          updateGrandTotal();
        }
 
@@ -358,12 +368,42 @@
        document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
        document.getElementById('includeGST').addEventListener('change', updateGrandTotal);
 
+       // --- Reset Form Function ---
+       function resetFormForNewInvoice() {
+           // Reset main fields
+           document.getElementById('clientName').value='';
+           document.getElementById('clientPhone').value='';
+           document.getElementById('clientEmail').value='';
+           document.getElementById('clientAddress').value='';
+           document.getElementById('invoiceNumber').value=generateInvoiceNumber();
+           document.getElementById('invoiceDate').value=today;
+           document.getElementById('dueDate').value=dueDateValue;
+           document.getElementById('notes').value='';
+           document.getElementById('includeGST').checked = true;
+           document.getElementById('invoiceStatus').value = 'Unpaid';
+           
+           // Clear items and add one default row
+           itemsBody.innerHTML=''; addItemRow();
+           
+           // Reset Edit state indicators
+           editInvoiceIdInput.value = '';
+           formTitle.textContent = 'Create New Invoice';
+           saveInvoiceBtn.textContent = '💾 Save Invoice to Cloud';
+           saveInvoiceBtn.classList.replace('bg-indigo-600', 'bg-green-600');
+           cancelEditBtn.style.display = 'none';
 
-       // --- Save invoice (ASYNC CLOUD FUNCTION) ---
+           updateGrandTotal();
+       }
+       cancelEditBtn.addEventListener('click', resetFormForNewInvoice);
+
+
+       // --- Save/Update invoice (ASYNC CLOUD FUNCTION) ---
        async function saveInvoice(){
          if(!userId){ alert('Please log in first to save invoices.'); return; }
 
-         // 1. Collect Items
+         const invoiceIdToEdit = editInvoiceIdInput.value;
+         
+         // 1. Collect Items and Calculate Totals
          const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
            const desc = r.querySelector('.it-desc').value || '';
            const qty = parseFloat(r.querySelector('.it-qty').value)||0;
@@ -371,14 +411,13 @@
            return {description:desc, qty, unit};
          }).filter(it => it.description || it.qty || it.unit);
 
-         // Calculate final totals to save
          const subtotal = calculateCurrentItemsTotal();
          const includeGST = document.getElementById('includeGST').checked;
          const gst = includeGST ? subtotal * 0.10 : 0;
          const total = subtotal + gst;
 
-         // 2. Create Invoice Object
-         const inv = {
+         // 2. Create Invoice Object (excluding dynamic payee data for update, as it's saved locally)
+         const invData = {
            clientName: document.getElementById('clientName').value || '',
            clientPhone: document.getElementById('clientPhone').value || '',
            clientEmail: document.getElementById('clientEmail').value || '',
@@ -390,7 +429,7 @@
            payeeEmail: document.getElementById('payeeEmail').value || '',
            payeeBSB: document.getElementById('payeeBSB').value || '',
            payeeAccount: document.getElementById('payeeAccount').value || '',
-           invoiceNumber: document.getElementById('invoiceNumber').value || generateInvoiceNumber(),
+           invoiceNumber: document.getElementById('invoiceNumber').value || (invoiceIdToEdit ? invData.invoiceNumber : generateInvoiceNumber()),
            invoiceDate: document.getElementById('invoiceDate').value || today,
            dueDate: document.getElementById('dueDate').value || '',
            status: document.getElementById('invoiceStatus').value || 'Unpaid',
@@ -399,55 +438,101 @@
            logo: logoDataURL,
            items: items,
            subtotal: subtotal,
-           total: total, // Save the calculated total value
+           total: total,
            userId: userId,
-           createdAt: serverTimestamp() // Firestore timestamp
          };
 
-         if(!inv.clientName || !inv.invoiceNumber || !inv.invoiceDate){
+         if(!invData.clientName || !invData.invoiceNumber || !invData.invoiceDate){
            alert('Please fill Client name, Invoice number and Invoice date');
            return;
          }
          
          try {
-           // 3. Check for unique invoice number for the user
-           const q = query(collection(db, 'invoices'),
-             where('invoiceNumber', '==', inv.invoiceNumber),
-             where('userId', '==', userId)
-           );
-           const existing = await getDocs(q);
+           if (invoiceIdToEdit) {
+               // --- UPDATE EXISTING INVOICE ---
+               const invoiceRef = doc(db, 'invoices', invoiceIdToEdit);
+               // Don't update the creation timestamp
+               await updateDoc(invoiceRef, invData);
+               alert(`Invoice #${invData.invoiceNumber} updated successfully!`);
+               
+           } else {
+               // --- CREATE NEW INVOICE ---
 
-           if(existing.docs.length > 0){
-               alert(`Invoice number ${inv.invoiceNumber} already exists for your user account.`);
-               return;
+               // 3. Check for unique invoice number for the user (only for new creation)
+               const q = query(collection(db, 'invoices'),
+                 where('invoiceNumber', '==', invData.invoiceNumber),
+                 where('userId', '==', userId)
+               );
+               const existing = await getDocs(q);
+
+               if(existing.docs.length > 0){
+                   alert(`Invoice number ${invData.invoiceNumber} already exists for your user account.`);
+                   return;
+               }
+               
+               // Add creation timestamp only when creating
+               invData.createdAt = serverTimestamp();
+               
+               // 4. Save to Firestore
+               await addDoc(collection(db, 'invoices'), invData);
+               alert('Invoice saved successfully to the cloud!');
            }
-
-           // 4. Save to Firestore
-           await addDoc(collection(db, 'invoices'), inv);
-           alert('Invoice saved successfully to the cloud!');
            
-           // 5. Reset form
-           document.getElementById('clientName').value='';
-           document.getElementById('clientPhone').value='';
-           document.getElementById('clientEmail').value='';
-           document.getElementById('clientAddress').value='';
-           document.getElementById('invoiceNumber').value=generateInvoiceNumber();
-           document.getElementById('invoiceDate').value=today;
-           document.getElementById('dueDate').value=dueDate.toISOString().split('T')[0];
-           document.getElementById('notes').value='';
-           document.getElementById('includeGST').checked = true;
-           itemsBody.innerHTML=''; addItemRow();
-           
-           // 6. Reload list
+           // 5. Reset form and reload list
+           resetFormForNewInvoice();
            await loadInvoicesAndRender();
 
          } catch(e){
-           console.error("Error saving document: ", e);
-           alert('Failed to save invoice. Check console for details.');
+           console.error(invoiceIdToEdit ? "Error updating document: " : "Error saving document: ", e);
+           alert(`Failed to ${invoiceIdToEdit ? 'update' : 'save'} invoice. Check console for details.`);
          }
        }
 
        document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
+
+       // --- Edit Invoice Function ---
+       window.editInvoice = function(id) {
+           const inv = invoices.find(i => i.id === id);
+           if (!inv) { alert('Invoice not found for editing.'); return; }
+           
+           // Set Edit state indicators
+           editInvoiceIdInput.value = inv.id;
+           formTitle.textContent = `Editing Invoice #${inv.invoiceNumber}`;
+           saveInvoiceBtn.textContent = '✅ Update Invoice';
+           saveInvoiceBtn.classList.replace('bg-green-600', 'bg-indigo-600');
+           cancelEditBtn.style.display = 'inline-block';
+
+           // Populate fields
+           document.getElementById('clientName').value = inv.clientName || '';
+           document.getElementById('clientPhone').value = inv.clientPhone || '';
+           document.getElementById('clientEmail').value = inv.clientEmail || '';
+           document.getElementById('clientAddress').value = inv.clientAddress || '';
+           
+           document.getElementById('invoiceNumber').value = inv.invoiceNumber || '';
+           document.getElementById('invoiceDate').value = inv.invoiceDate || today;
+           document.getElementById('dueDate').value = inv.dueDate || dueDateValue;
+           document.getElementById('invoiceStatus').value = inv.status || 'Unpaid';
+           document.getElementById('includeGST').checked = inv.includeGST !== undefined ? inv.includeGST : true;
+           document.getElementById('notes').value = inv.notes || '';
+
+           // Handle Logo update (update local state/preview only)
+           if (inv.logo) {
+               logoDataURL = inv.logo;
+               logoPreview.src = inv.logo;
+           }
+
+           // Populate items table
+           itemsBody.innerHTML = '';
+           if (inv.items && inv.items.length > 0) {
+               inv.items.forEach(item => addItemRow(item.description, item.qty, item.unit));
+           } else {
+               addItemRow();
+           }
+
+           // Scroll to the top of the form
+           document.getElementById('invoice-form').scrollIntoView({ behavior: 'smooth' });
+       }
+
 
        // --- Invoice list rendering (ASYNC CLOUD FUNCTION) ---
        async function loadInvoicesAndRender(){
@@ -483,7 +568,7 @@
            invoices.sort((a, b) => {
                const aTime = b.createdAt ? b.createdAt.seconds : 0;
                const bTime = a.createdAt ? a.createdAt.seconds : 0;
-               return aTime - bTime;
+               return bTime - aTime; // Sort descending (newest first)
            });
 
            // 4. Apply Filters and calculate Overdue status
@@ -534,7 +619,8 @@
                  <td class="p-3">${escapeHtml(inv.dueDate||'')}</td>
                  <td class="p-3 font-medium">${escapeHtml(inv.status)}</td>
                  <td class="p-3 space-x-1">
-                   <button data-id="${inv.id}" class="openBtn bg-blue-500 text-white text-xs p-1 rounded hover:bg-blue-600">Open</button>
+                   <button data-id="${inv.id}" class="openBtn bg-indigo-500 text-white text-xs p-1 rounded hover:bg-indigo-600">Open</button>
+                   <button data-id="${inv.id}" class="editBtn bg-blue-500 text-white text-xs p-1 rounded hover:bg-blue-600">Edit</button>
                    <button data-id="${inv.id}" class="payBtn bg-yellow-500 text-white text-xs p-1 rounded hover:bg-yellow-600">Paid</button>
                    <button data-id="${inv.id}" class="delBtn bg-red-500 text-white text-xs p-1 rounded hover:bg-red-600">Delete</button>
                  </td>`;
@@ -543,9 +629,11 @@
 
            // 7. Attach event listeners
            document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
+           document.querySelectorAll('.editBtn').forEach(b=>b.addEventListener('click', e=>editInvoice(e.currentTarget.dataset.id)));
            document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>updateInvoiceStatus(e.currentTarget.dataset.id, 'Paid')));
            document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
-               if(confirm('Are you sure you want to permanently delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
+               // NOTE: Using window.confirm() here as a quick UI solution, but ideally this would be a custom modal/dialog.
+               if(window.confirm('Are you sure you want to permanently delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
            }));
 
          } catch(e) {
@@ -557,10 +645,9 @@
        // --- Cloud Actions (Update/Delete) ---
        async function updateInvoiceStatus(id, newStatus){
          try {
-           // Corrected: Use doc() to get a reference to a single document
            const invoiceRef = doc(db, 'invoices', id);
            await updateDoc(invoiceRef, { status: newStatus });
-           alert('Invoice status updated successfully!');
+           alert(`Invoice status set to ${newStatus} successfully!`);
            await loadInvoicesAndRender();
          } catch(e) {
            console.error("Error updating document: ", e);
@@ -570,7 +657,6 @@
 
        async function deleteInvoice(id){
          try {
-           // Corrected: Use doc() to get a reference to a single document
            const invoiceRef = doc(db, 'invoices', id);
            await deleteDoc(invoiceRef);
            alert('Invoice deleted successfully!');
@@ -582,7 +668,7 @@
        }
 
        // --- Open invoice (New tab - same logic) ---
-       function openInvoice(id){
+       window.openInvoice = function(id){
          const inv = invoices.find(i => i.id === id);
          if (!inv) return;
          
@@ -693,6 +779,11 @@
        (function init(){
          loadPayeeFromStorage();
          if(logoDataURL) logoPreview.src = logoDataURL;
+         // Set initial invoice number and dates
+         document.getElementById('invoiceNumber').value = generateInvoiceNumber();
+         document.getElementById('invoiceDate').value = today;
+         document.getElementById('dueDate').value = dueDateValue;
+         
          if(itemsBody.children.length===0) addItemRow();
          document.getElementById('clientName').focus();
          populateFinancialYearFilter();
