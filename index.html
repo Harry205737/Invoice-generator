@@ -32,38 +32,9 @@
 <body class="bg-gray-100 text-gray-800 antialiased pb-24">
 
    <!-- ========================================== -->
-   <!-- AUTHENTICATION SCREEN                      -->
+   <!-- MAIN APP CONTAINER                         -->
    <!-- ========================================== -->
-   <div id="screen-auth" class="app-screen active min-h-screen flex items-center justify-center p-4">
-       <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-           <div class="text-center mb-8">
-               <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 mb-4">
-                   <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-               </div>
-               <h1 class="text-2xl font-bold text-gray-900">Baw Baw Aerial</h1>
-               <p class="text-sm text-gray-500 mt-1">Invoice Manager Platform</p>
-           </div>
-
-           <div class="space-y-4">
-               <div>
-                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email Address</label>
-                   <input type="email" id="loginEmail" placeholder="your@email.com" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
-               </div>
-               <div>
-                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Password</label>
-                   <input type="password" id="loginPassword" placeholder="••••••••" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
-               </div>
-               
-               <div class="pt-2 space-y-2">
-                   <button id="loginBtn" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Log In</button>
-                   <button id="signUpBtn" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition">Create Account</button>
-               </div>
-           </div>
-       </div>
-   </div>
-
-   <!-- MAIN APP CONTAINER -->
-   <div id="app-main" class="hidden">
+   <div id="app-main">
        
        <!-- TOP HEADER BAR -->
        <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
@@ -72,17 +43,20 @@
                    <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xl">B</div>
                    <div>
                        <h1 class="font-bold text-gray-800 leading-tight">Baw Baw Aerial</h1>
-                       <p class="text-xs text-gray-500" id="user-display-email">User</p>
+                       <p class="text-xs text-gray-500" id="user-display-email">Not Signed In</p>
                    </div>
                </div>
-               <button id="logoutBtn" class="text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
+               <div id="authHeaderActions">
+                   <button id="headerLoginBtn" class="bg-indigo-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-indigo-700 transition">Log In / Sign Up</button>
+                   <button id="logoutBtn" class="hidden text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
+               </div>
            </div>
        </header>
 
        <!-- ========================================== -->
        <!-- SCREEN 1: DASHBOARD                        -->
        <!-- ========================================== -->
-       <section id="screen-dashboard" class="app-screen max-w-6xl mx-auto p-4 sm:p-6">
+       <section id="screen-dashboard" class="app-screen active max-w-6xl mx-auto p-4 sm:p-6">
            <div class="flex justify-between items-center mb-6">
                <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
                <button id="dashNewInvBtn" class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
@@ -282,7 +256,7 @@
                <div class="space-y-4">
                    <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
                        <p class="text-xs text-indigo-600 font-semibold uppercase">Cloud Connection</p>
-                       <p class="text-sm font-medium text-indigo-900 mt-1">Status: Active (Firebase Firestore)</p>
+                       <p id="settingsAuthStatus" class="text-sm font-medium text-indigo-900 mt-1">Status: Active (Firebase Firestore)</p>
                    </div>
                    <button id="settingsLogoutBtn" class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">Log Out of Account</button>
                </div>
@@ -311,6 +285,39 @@
            </nav>
        </div>
 
+   </div>
+
+   <!-- ========================================== -->
+   <!-- AUTHENTICATION MODAL POPUP                 -->
+   <!-- ========================================== -->
+   <div id="authModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative">
+           <button id="closeAuthModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+           
+           <div class="text-center mb-6">
+               <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 mb-3">
+                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+               </div>
+               <h2 class="text-xl font-bold text-gray-900">Account Login</h2>
+               <p class="text-xs text-gray-500 mt-1">Sign in to sync your invoices to the cloud</p>
+           </div>
+
+           <div class="space-y-4">
+               <div>
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email Address</label>
+                   <input type="email" id="loginEmail" placeholder="your@email.com" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+               </div>
+               <div>
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Password</label>
+                   <input type="password" id="loginPassword" placeholder="••••••••" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+               </div>
+               
+               <div class="pt-2 space-y-2">
+                   <button id="loginBtn" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 text-sm">Log In</button>
+                   <button id="signUpBtn" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition text-sm">Create Account</button>
+               </div>
+           </div>
+       </div>
    </div>
 
    <style>
@@ -363,6 +370,10 @@
        const loginEmailInput = document.getElementById('loginEmail');
        const loginPasswordInput = document.getElementById('loginPassword');
        const userDisplayEmail = document.getElementById('user-display-email');
+       const authModal = document.getElementById('authModal');
+       const headerLoginBtn = document.getElementById('headerLoginBtn');
+       const logoutBtn = document.getElementById('logoutBtn');
+       const settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
        
        const displaySubtotal = document.getElementById('displaySubtotal');
        const displayGST = document.getElementById('displayGST');
@@ -376,6 +387,18 @@
 
        const summaryTotalAll = document.getElementById('summaryTotalAll');
        const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
+
+       // Modal controls
+       function openAuthModal() { authModal.classList.remove('hidden'); }
+       function closeAuthModal() { authModal.classList.add('hidden'); }
+
+       headerLoginBtn.addEventListener('click', openAuthModal);
+       document.getElementById('closeAuthModalBtn').addEventListener('click', closeAuthModal);
+
+       // Close modal when clicking outside of modal card
+       authModal.addEventListener('click', (e) => {
+           if (e.target === authModal) closeAuthModal();
+       });
 
        // --- Screen Switcher ---
        window.switchScreen = function(screenName) {
@@ -411,9 +434,6 @@
        function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
        function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
 
-       /**
-        * Fixed Financial Year calculation comparing exact YYYY-MM-DD date strings safely
-        */
        function getFinancialYear(dateString) {
            if (!dateString) return 'N/A';
            const parts = dateString.split('-');
@@ -422,7 +442,6 @@
            const year = parseInt(parts[0], 10);
            const month = parseInt(parts[1], 10);
            
-           // Australian FY runs July 1 (Month 7) to June 30
            if (month >= 7) {
                return `${year}-${year + 1}`;
            } else {
@@ -537,7 +556,11 @@
        });
 
        async function saveInvoice(){
-         if(!userId){ alert('Please log in first.'); return; }
+         if(!userId){ 
+             openAuthModal();
+             alert('Please log in to save your invoice to the cloud.'); 
+             return; 
+         }
 
          const invoiceIdToEdit = editInvoiceIdInput.value;
          
@@ -658,7 +681,7 @@
 
        async function loadInvoicesAndRender(){
          if(!userId) {
-           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in.</td></tr>';
+           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and manage cloud-synced invoices.</td></tr>';
            summaryTotalAll.textContent = formatCurrency(0);
            summaryTotalUnpaid.textContent = formatCurrency(0);
            return;
@@ -825,19 +848,23 @@
            const email = loginEmailInput.value;
            const password = loginPasswordInput.value;
            if (!email || !password) return alert('Enter email & password.');
-           signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+           signInWithEmailAndPassword(auth, email, password)
+             .then(() => closeAuthModal())
+             .catch(e => alert(e.message));
        });
 
        document.getElementById('signUpBtn').addEventListener('click', () => {
            const email = loginEmailInput.value;
            const password = loginPasswordInput.value;
            if (!email || !password) return alert('Enter email & password.');
-           createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+           createUserWithEmailAndPassword(auth, email, password)
+             .then(() => closeAuthModal())
+             .catch(e => alert(e.message));
        });
 
        const performLogout = () => signOut(auth).catch(e => alert(e.message));
-       document.getElementById('logoutBtn').addEventListener('click', performLogout);
-       document.getElementById('settingsLogoutBtn').addEventListener('click', performLogout);
+       logoutBtn.addEventListener('click', performLogout);
+       settingsLogoutBtn.addEventListener('click', performLogout);
 
        // --- Navigation Event Bindings ---
        document.getElementById('nav-dashboard').addEventListener('click', () => switchScreen('dashboard'));
@@ -851,22 +878,25 @@
        filterStatus.addEventListener('change', () => loadInvoicesAndRender());
        filterYear.addEventListener('change', () => loadInvoicesAndRender());
 
-       // --- Auth Observer & Init ---
+       // --- Auth Observer ---
        onAuthStateChanged(auth, async (user) => {
-         const authScreen = document.getElementById('screen-auth');
-         const appMain = document.getElementById('app-main');
-
          if (user) {
            userId = user.uid;
            userDisplayEmail.textContent = user.email;
-           authScreen.classList.remove('active');
-           appMain.classList.remove('hidden');
-           switchScreen('dashboard');
+           headerLoginBtn.classList.add('hidden');
+           logoutBtn.classList.remove('hidden');
+           settingsLogoutBtn.classList.remove('hidden');
+           document.getElementById('settingsAuthStatus').textContent = `Status: Logged in as ${user.email}`;
+           closeAuthModal();
            await loadInvoicesAndRender();
          } else {
            userId = null;
-           appMain.classList.add('hidden');
-           authScreen.classList.add('active');
+           userDisplayEmail.textContent = 'Not Signed In';
+           headerLoginBtn.classList.remove('hidden');
+           logoutBtn.classList.add('hidden');
+           settingsLogoutBtn.classList.add('hidden');
+           document.getElementById('settingsAuthStatus').textContent = 'Status: Signed Out';
+           await loadInvoicesAndRender();
          }
        });
 
