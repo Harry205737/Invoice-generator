@@ -4,6 +4,7 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Cloud Invoice Manager</title>
+   <!-- Load Tailwind CSS -->
    <script src="https://cdn.tailwindcss.com"></script>
    <style>
        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -19,7 +20,7 @@
        .status-unpaid { background-color: #f0f9ff; }
        .invoice-table th, .invoice-table td { padding: 0.75rem; }
        
-       /* App Views Navigation Smoothness */
+       /* App Views Navigation */
        .app-screen {
            display: none;
        }
@@ -30,6 +31,9 @@
 </head>
 <body class="bg-gray-100 text-gray-800 antialiased pb-24">
 
+   <!-- ========================================== -->
+   <!-- AUTHENTICATION SCREEN                      -->
+   <!-- ========================================== -->
    <div id="screen-auth" class="app-screen active min-h-screen flex items-center justify-center p-4">
        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
            <div class="text-center mb-8">
@@ -51,15 +55,17 @@
                </div>
                
                <div class="pt-2 space-y-2">
-                   <button onclick="loginUser()" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Log In</button>
-                   <button onclick="signUpUser()" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition">Create Account</button>
+                   <button id="loginBtn" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Log In</button>
+                   <button id="signUpBtn" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition">Create Account</button>
                </div>
            </div>
        </div>
    </div>
 
+   <!-- MAIN APP CONTAINER -->
    <div id="app-main" class="hidden">
        
+       <!-- TOP HEADER BAR -->
        <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
            <div class="max-w-6xl mx-auto flex justify-between items-center">
                <div class="flex items-center space-x-3">
@@ -69,18 +75,22 @@
                        <p class="text-xs text-gray-500" id="user-display-email">User</p>
                    </div>
                </div>
-               <button onclick="logoutUser()" class="text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
+               <button id="logoutBtn" class="text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
            </div>
        </header>
 
+       <!-- ========================================== -->
+       <!-- SCREEN 1: DASHBOARD                        -->
+       <!-- ========================================== -->
        <section id="screen-dashboard" class="app-screen max-w-6xl mx-auto p-4 sm:p-6">
            <div class="flex justify-between items-center mb-6">
                <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
-               <button onclick="switchScreen('invoice-editor'); resetFormForNewInvoice();" class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
+               <button id="dashNewInvBtn" class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
                    <span>+ New Invoice</span>
                </button>
            </div>
 
+           <!-- Summary Cards -->
            <div id="invoice-summary" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Invoiced Value</p>
@@ -92,12 +102,13 @@
                </div>
            </div>
 
+           <!-- Saved Invoices Module -->
            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-               <div class="p-4 border-b border-gray-200 flex flex-wrap gap-4 justify-between items-center bg-gray-50">
+               <div class="p-4 border-b border-gray-200 flex flex-wrap gap-3 justify-between items-center bg-gray-50">
                    <h3 class="font-bold text-gray-700">Recent Invoices</h3>
                    
-                   <div class="flex flex-wrap gap-2">
-                       <select id="filterStatus" class="p-2 text-sm border rounded-xl bg-white" onchange="loadInvoicesAndRender()">
+                   <div class="flex flex-wrap items-center gap-2">
+                       <select id="filterStatus" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
                            <option value="All">All Statuses</option>
                            <option value="Unpaid">Unpaid</option>
                            <option value="Paid">Paid</option>
@@ -105,8 +116,11 @@
                            <option value="Cancelled">Cancelled</option>
                        </select>
 
-                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white" onchange="loadInvoicesAndRender()">
-                           </select>
+                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
+                           <!-- Options populated by JS -->
+                       </select>
+
+                       <button id="applyFilterBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">Apply Filter</button>
                    </div>
                </div>
 
@@ -130,15 +144,19 @@
            </div>
        </section>
 
+       <!-- ========================================== -->
+       <!-- SCREEN 2: INVOICE EDITOR                   -->
+       <!-- ========================================== -->
        <section id="screen-invoice-editor" class="app-screen max-w-4xl mx-auto p-4 sm:p-6">
            <div id="invoice-form" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                <div class="flex justify-between items-center mb-6 pb-4 border-b">
                    <h2 id="formTitle" class="text-2xl font-bold text-gray-800">Create New Invoice</h2>
-                   <button onclick="switchScreen('dashboard')" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+                   <button id="closeFormBtn" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
                </div>
                
                <input type="hidden" id="editInvoiceId" value="">
                
+               <!-- Payee Details -->
                <div class="mb-8 p-4 rounded-xl bg-gray-50 border border-gray-200">
                    <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Your Business Details (Payee)</h3>
                    <div class="flex items-center space-x-4 mb-4">
@@ -159,8 +177,9 @@
                    </div>
                </div>
 
+               <!-- Invoice Meta -->
                <div class="mb-8">
-                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Invoice Meta</h3>
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Invoice Meta & External Project</h3>
                    <div class="grid sm:grid-cols-2 gap-3">
                        <div>
                            <label class="block text-xs font-semibold text-gray-500 mb-1">Invoice Number</label>
@@ -182,9 +201,14 @@
                            <label class="block text-xs font-semibold text-gray-500 mb-1">Due Date</label>
                            <input type="date" id="dueDate" class="input-field">
                        </div>
+                       <div class="sm:col-span-2">
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">Project / External Link (URL)</label>
+                           <input type="url" id="projectUrl" placeholder="https://example.com/project-folder" class="input-field">
+                       </div>
                    </div>
                </div>
 
+               <!-- Client Details -->
                <div class="mb-8">
                    <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Client Details (Bill To)</h3>
                    <div class="grid sm:grid-cols-2 gap-3">
@@ -195,6 +219,7 @@
                    </div>
                </div>
                
+               <!-- Items Table -->
                <div class="mb-8">
                    <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Line Items</h3>
                    <div class="overflow-x-auto border rounded-xl mb-3">
@@ -214,6 +239,7 @@
                    <button id="addItemBtn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-600 p-2.5 rounded-xl font-medium hover:bg-indigo-100 transition text-sm">+ Add Line Item</button>
                </div>
 
+               <!-- Totals -->
                <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
                    <div class="flex justify-between font-medium text-gray-600 text-sm">
                        <span>Subtotal:</span>
@@ -221,7 +247,7 @@
                    </div>
                    <div class="flex justify-between font-medium text-gray-600 text-sm border-b pb-2">
                        <label class="flex items-center space-x-2">
-                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500" onchange="updateGrandTotal()">
+                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500">
                            <span>Include GST (10%)</span>
                        </label>
                        <span id="displayGST">$0.00</span>
@@ -245,6 +271,9 @@
            </div>
        </section>
 
+       <!-- ========================================== -->
+       <!-- SCREEN 3: SETTINGS                         -->
+       <!-- ========================================== -->
        <section id="screen-settings" class="app-screen max-w-2xl mx-auto p-4 sm:p-6">
            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                <h2 class="text-2xl font-bold text-gray-800 mb-4">App Settings</h2>
@@ -255,24 +284,27 @@
                        <p class="text-xs text-indigo-600 font-semibold uppercase">Cloud Connection</p>
                        <p class="text-sm font-medium text-indigo-900 mt-1">Status: Active (Firebase Firestore)</p>
                    </div>
-                   <button onclick="logoutUser()" class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">Log Out of Account</button>
+                   <button id="settingsLogoutBtn" class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">Log Out of Account</button>
                </div>
            </div>
        </section>
 
+       <!-- ========================================== -->
+       <!-- FLOATING TASK BAR                          -->
+       <!-- ========================================== -->
        <div class="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
            <nav class="bg-white/90 backdrop-blur-md border border-gray-200 shadow-2xl rounded-full p-2 flex items-center space-x-2 pointer-events-auto">
-               <button onclick="switchScreen('dashboard')" id="nav-dashboard" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold transition bg-indigo-600 text-white shadow-md">
+               <button id="nav-dashboard" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold transition bg-indigo-600 text-white shadow-md">
                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                    <span>Dashboard</span>
                </button>
                
-               <button onclick="switchScreen('invoice-editor'); resetFormForNewInvoice();" id="nav-invoice-editor" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+               <button id="nav-invoice-editor" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                    <span>New Invoice</span>
                </button>
 
-               <button onclick="switchScreen('settings')" id="nav-settings" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+               <button id="nav-settings" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
                    <span>Settings</span>
                </button>
@@ -288,9 +320,6 @@
    </style>
 
    <script type="module">
-       // =========================================================================
-       // FIREBASE V9 MODULAR SDK IMPORTS
-       // =========================================================================
        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
        import {
          getAuth,
@@ -312,9 +341,6 @@
          doc
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-       // =========================================================================
-       // USER'S FIREBASE CONFIGURATION
-       // =========================================================================
        const firebaseConfig = {
          apiKey: "AIzaSyDFk7MaEfHd7ApFYS7TztSFphtspT4-axo",
          authDomain: "invoicemanager-b0604.firebaseapp.com",
@@ -325,14 +351,12 @@
          measurementId: "G-0GWKMR09EN"
        };
        
-       // Initialize Firebase services
        const app = initializeApp(firebaseConfig);
        const auth = getAuth(app);
        const db = getFirestore(app);
        let userId = null;
        let invoices = [];
 
-       // DOM Elements
        const itemsBody = document.getElementById('itemsBody');
        const logoPreview = document.getElementById('logoPreview');
        const invoiceTableBody = document.getElementById('invoiceTableBody');
@@ -344,6 +368,7 @@
        const displayGST = document.getElementById('displayGST');
        const displayGrandTotal = document.getElementById('displayGrandTotal');
        const filterYear = document.getElementById('filterYear');
+       const filterStatus = document.getElementById('filterStatus');
        const saveInvoiceBtn = document.getElementById('saveInvoiceBtn');
        const cancelEditBtn = document.getElementById('cancelEditBtn');
        const formTitle = document.getElementById('formTitle');
@@ -352,7 +377,7 @@
        const summaryTotalAll = document.getElementById('summaryTotalAll');
        const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
 
-       // --- App Navigation State Manager ---
+       // --- Screen Switcher ---
        window.switchScreen = function(screenName) {
            document.querySelectorAll('.app-screen').forEach(screen => {
                screen.classList.remove('active');
@@ -373,9 +398,8 @@
            }
 
            window.scrollTo(0, 0);
-       }
+       };
 
-       // --- State and helpers ---
        let logoDataURL = localStorage.getItem('invoiceLogo')||'';
        
        const today = new Date().toISOString().split('T')[0];
@@ -387,13 +411,19 @@
        function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
        function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
 
+       /**
+        * Fixed Financial Year calculation comparing exact YYYY-MM-DD date strings safely
+        */
        function getFinancialYear(dateString) {
            if (!dateString) return 'N/A';
-           const date = new Date(dateString + 'T00:00:00');
-           const year = date.getFullYear();
-           const month = date.getMonth();
+           const parts = dateString.split('-');
+           if (parts.length < 3) return 'N/A';
            
-           if (month >= 6) {
+           const year = parseInt(parts[0], 10);
+           const month = parseInt(parts[1], 10);
+           
+           // Australian FY runs July 1 (Month 7) to June 30
+           if (month >= 7) {
                return `${year}-${year + 1}`;
            } else {
                return `${year - 1}-${year}`;
@@ -413,7 +443,6 @@
          });
        }
 
-       // --- Logo upload ---
        document.getElementById('logoInput').addEventListener('change', e=>{
          const f = e.target.files && e.target.files[0];
          if(!f) return;
@@ -426,7 +455,6 @@
          r.readAsDataURL(f);
        });
 
-       // --- Grand Total Calculation ---
        function calculateCurrentItemsTotal() {
            let currentSubtotal = 0;
            Array.from(itemsBody.querySelectorAll('tr')).forEach(r => {
@@ -448,9 +476,8 @@
            displaySubtotal.textContent = formatCurrency(subtotal);
            displayGST.textContent = formatCurrency(gst);
            displayGrandTotal.textContent = formatCurrency(grandTotal);
-       }
+       };
 
-       // --- Items ---
        function addItemRow(desc='', qty=1, unit=0){
          const tr = document.createElement('tr');
          tr.className = "border-b border-gray-100";
@@ -475,12 +502,11 @@
            const u = parseFloat(unitInput.value || 0);
            tr.querySelector('.it-total').textContent = formatCurrency(q * u);
            updateGrandTotal();
-       }
+       };
 
        document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
        document.getElementById('includeGST').addEventListener('change', updateGrandTotal);
 
-       // --- Reset Form Function ---
        window.resetFormForNewInvoice = function() {
            document.getElementById('clientName').value='';
            document.getElementById('clientPhone').value='';
@@ -489,6 +515,7 @@
            document.getElementById('invoiceNumber').value=generateInvoiceNumber();
            document.getElementById('invoiceDate').value=today;
            document.getElementById('dueDate').value=dueDateValue;
+           document.getElementById('projectUrl').value='';
            document.getElementById('notes').value='';
            document.getElementById('includeGST').checked = true;
            document.getElementById('invoiceStatus').value = 'Unpaid';
@@ -502,15 +529,15 @@
            cancelEditBtn.style.display = 'none';
 
            updateGrandTotal();
-       }
+       };
+
        cancelEditBtn.addEventListener('click', () => {
            resetFormForNewInvoice();
            switchScreen('dashboard');
        });
 
-       // --- Save/Update invoice ---
        async function saveInvoice(){
-         if(!userId){ alert('Please log in first to save invoices.'); return; }
+         if(!userId){ alert('Please log in first.'); return; }
 
          const invoiceIdToEdit = editInvoiceIdInput.value;
          
@@ -542,6 +569,7 @@
            invoiceDate: document.getElementById('invoiceDate').value || today,
            dueDate: document.getElementById('dueDate').value || '',
            status: document.getElementById('invoiceStatus').value || 'Unpaid',
+           projectUrl: document.getElementById('projectUrl').value || '',
            includeGST: includeGST,
            notes: document.getElementById('notes').value || '',
            logo: logoDataURL,
@@ -584,13 +612,12 @@
 
          } catch(e){
            console.error("Error saving document: ", e);
-           alert(`Failed to save invoice. Check console for details.`);
+           alert(`Failed to save invoice.`);
          }
        }
 
        document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
 
-       // --- Edit Invoice Function ---
        window.editInvoice = function(id) {
            const inv = invoices.find(i => i.id === id);
            if (!inv) { alert('Invoice not found.'); return; }
@@ -610,6 +637,7 @@
            document.getElementById('invoiceDate').value = inv.invoiceDate || today;
            document.getElementById('dueDate').value = inv.dueDate || dueDateValue;
            document.getElementById('invoiceStatus').value = inv.status || 'Unpaid';
+           document.getElementById('projectUrl').value = inv.projectUrl || '';
            document.getElementById('includeGST').checked = inv.includeGST !== undefined ? inv.includeGST : true;
            document.getElementById('notes').value = inv.notes || '';
 
@@ -626,9 +654,8 @@
            }
 
            switchScreen('invoice-editor');
-       }
+       };
 
-       // --- Invoice list rendering ---
        async function loadInvoicesAndRender(){
          if(!userId) {
            invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in.</td></tr>';
@@ -640,8 +667,8 @@
          invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
          
          try {
-           const filterStatus = document.getElementById('filterStatus').value;
-           const filterYearValue = document.getElementById('filterYear').value;
+           const filterStatusVal = filterStatus.value;
+           const filterYearVal = filterYear.value;
            const todayForCheck = new Date().toISOString().split('T')[0];
            
            let q = query(collection(db, 'invoices'), where('userId', '==', userId));
@@ -650,8 +677,8 @@
            invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
            
            invoices.sort((a, b) => {
-               const aTime = b.createdAt ? b.createdAt.seconds : 0;
-               const bTime = a.createdAt ? a.createdAt.seconds : 0;
+               const aTime = a.createdAt ? a.createdAt.seconds : 0;
+               const bTime = b.createdAt ? b.createdAt.seconds : 0;
                return bTime - aTime;
            });
 
@@ -659,16 +686,18 @@
            let totalUnpaid = 0;
 
            let filteredInvoices = invoices.filter(inv => {
-               if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < todayForCheck) {
-                   inv.status = 'Overdue';
+               let currentStatus = inv.status || 'Unpaid';
+               if(currentStatus !== 'Paid' && currentStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
+                   currentStatus = 'Overdue';
                }
 
-               const isCorrectYear = filterYearValue === 'All' || getFinancialYear(inv.invoiceDate) === filterYearValue;
-               const isCorrectStatus = filterStatus === 'All' || inv.status === filterStatus;
+               const invFY = getFinancialYear(inv.invoiceDate);
+               const isCorrectYear = filterYearVal === 'All' || invFY === filterYearVal;
+               const isCorrectStatus = filterStatusVal === 'All' || currentStatus === filterStatusVal;
 
                if (isCorrectYear) {
                    totalAll += inv.total || 0;
-                   if (inv.status !== 'Paid' && inv.status !== 'Cancelled') {
+                   if (currentStatus !== 'Paid' && currentStatus !== 'Cancelled') {
                        totalUnpaid += inv.total || 0;
                    }
                }
@@ -682,20 +711,30 @@
            invoiceTableBody.innerHTML='';
            
            if(filteredInvoices.length === 0){
-               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No invoices found.</td></tr>`;
+               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No matching invoices found.</td></tr>`;
+               return;
            }
 
            filteredInvoices.forEach((inv)=>{
+               let displayStatus = inv.status || 'Unpaid';
+               if(displayStatus !== 'Paid' && displayStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
+                   displayStatus = 'Overdue';
+               }
+
+               const projectBtnHtml = inv.projectUrl ? 
+                   `<a href="${escapeHtml(inv.projectUrl)}" target="_blank" rel="noopener noreferrer" class="bg-purple-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-purple-700 inline-block font-medium">Project</a>` : '';
+
                const tr = document.createElement('tr');
-               tr.className = `border-b border-gray-100 ${inv.status === 'Paid' ? 'status-paid' : inv.status === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
+               tr.className = `border-b border-gray-100 ${displayStatus === 'Paid' ? 'status-paid' : displayStatus === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
                tr.innerHTML = `
                  <td class="p-3 font-semibold">${escapeHtml(inv.invoiceNumber)}</td>
                  <td class="p-3">${escapeHtml(inv.clientName)}</td>
                  <td class="p-3 text-gray-600">${escapeHtml(inv.invoiceDate)}</td>
                  <td class="p-3 text-gray-600">${escapeHtml(inv.dueDate||'')}</td>
-                 <td class="p-3 font-bold">${escapeHtml(inv.status)}</td>
-                 <td class="p-3 space-x-1">
+                 <td class="p-3 font-bold">${escapeHtml(displayStatus)}</td>
+                 <td class="p-3 space-x-1 whitespace-nowrap">
                    <button data-id="${inv.id}" class="openBtn bg-indigo-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-indigo-700">Open</button>
+                   ${projectBtnHtml}
                    <button data-id="${inv.id}" class="editBtn bg-blue-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-700">Edit</button>
                    <button data-id="${inv.id}" class="payBtn bg-green-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-green-700">Paid</button>
                    <button data-id="${inv.id}" class="delBtn bg-red-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-700">Del</button>
@@ -716,7 +755,6 @@
          }
        }
 
-       // --- Cloud Actions ---
        async function updateInvoiceStatus(id, newStatus){
          try {
            const invoiceRef = doc(db, 'invoices', id);
@@ -739,7 +777,6 @@
          }
        }
 
-       // --- Open printable invoice ---
        window.openInvoice = function(id){
          const inv = invoices.find(i => i.id === id);
          if (!inv) return;
@@ -750,12 +787,15 @@
 
          const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
 
+         const projectLinkHtml = inv.projectUrl ? `<p><strong>Project Link:</strong> <a href="${escapeHtml(inv.projectUrl)}" target="_blank">${escapeHtml(inv.projectUrl)}</a></p>` : '';
+
          const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right}</style></head><body>`
            + `<div class="row"><div>`
            + (inv.logo?`<img src="${escapeHtml(inv.logo)}" style="max-width:220px;display:block;margin-bottom:10px">`:'')
            + `<strong>${escapeHtml(inv.payeeName||'')}</strong><br>ABN: ${escapeHtml(inv.payeeABN||'')}<br>${escapeHtml(inv.payeeAddress||'')}<br>Phone: ${escapeHtml(inv.payeePhone||'')}<br>Email: ${escapeHtml(inv.payeeEmail||'')}</div>`
            + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Status:</strong> <span style="font-weight:bold; color:${inv.status==='Paid'?'green':'red'}">${escapeHtml(inv.status)}</span></div></div></div>`
            + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
+           + projectLinkHtml
            + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
            + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
            + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
@@ -765,9 +805,8 @@
          const w = window.open();
          w.document.write(html);
          w.document.close();
-       }
+       };
 
-       // --- Filter Setup ---
        function populateFinancialYearFilter() {
            const currentYear = new Date().getFullYear();
            const yearOptions = ['All'];
@@ -781,42 +820,38 @@
            ).join('');
        }
 
-       // =========================================================================
-       // AUTHENTICATION FUNCTIONS
-       // =========================================================================
+       // --- Authentication Event Bindings ---
+       document.getElementById('loginBtn').addEventListener('click', () => {
+           const email = loginEmailInput.value;
+           const password = loginPasswordInput.value;
+           if (!email || !password) return alert('Enter email & password.');
+           signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+       });
 
-       window.signUpUser = function() {
-         const email = loginEmailInput.value;
-         const password = loginPasswordInput.value;
+       document.getElementById('signUpBtn').addEventListener('click', () => {
+           const email = loginEmailInput.value;
+           const password = loginPasswordInput.value;
+           if (!email || !password) return alert('Enter email & password.');
+           createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+       });
 
-         if (!email || !password) { alert('Please enter an email and password to sign up.'); return; }
-         
-         createUserWithEmailAndPassword(auth, email, password)
-           .then(() => alert("Sign Up Successful! You are now logged in."))
-           .catch((error) => alert('Sign Up Error: ' + error.message));
-       }
+       const performLogout = () => signOut(auth).catch(e => alert(e.message));
+       document.getElementById('logoutBtn').addEventListener('click', performLogout);
+       document.getElementById('settingsLogoutBtn').addEventListener('click', performLogout);
 
-       window.loginUser = function() {
-         const email = loginEmailInput.value;
-         const password = loginPasswordInput.value;
+       // --- Navigation Event Bindings ---
+       document.getElementById('nav-dashboard').addEventListener('click', () => switchScreen('dashboard'));
+       document.getElementById('nav-invoice-editor').addEventListener('click', () => { resetFormForNewInvoice(); switchScreen('invoice-editor'); });
+       document.getElementById('nav-settings').addEventListener('click', () => switchScreen('settings'));
+       document.getElementById('dashNewInvBtn').addEventListener('click', () => { resetFormForNewInvoice(); switchScreen('invoice-editor'); });
+       document.getElementById('closeFormBtn').addEventListener('click', () => switchScreen('dashboard'));
 
-         if (!email || !password) { alert('Please enter an email and password to log in.'); return; }
+       // --- Filter Event Binding ---
+       document.getElementById('applyFilterBtn').addEventListener('click', () => loadInvoicesAndRender());
+       filterStatus.addEventListener('change', () => loadInvoicesAndRender());
+       filterYear.addEventListener('change', () => loadInvoicesAndRender());
 
-         signInWithEmailAndPassword(auth, email, password)
-           .then(() => {})
-           .catch((error) => alert('Login Error: ' + error.message));
-       }
-
-       window.logoutUser = function() {
-         signOut(auth).then(() => {
-           // Screen reset happens via onAuthStateChanged
-         }).catch((error) => alert('Logout Error: ' + error.message));
-       }
-       
-       // =========================================================================
-       // INITIALIZATION
-       // =========================================================================
-
+       // --- Auth Observer & Init ---
        onAuthStateChanged(auth, async (user) => {
          const authScreen = document.getElementById('screen-auth');
          const appMain = document.getElementById('app-main');
@@ -845,7 +880,6 @@
          if(itemsBody.children.length===0) addItemRow();
          populateFinancialYearFilter();
        })();
-
    </script>
 </body>
 </html>
