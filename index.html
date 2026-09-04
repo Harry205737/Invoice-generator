@@ -4,7 +4,6 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Cloud Invoice Manager</title>
-   <!-- Load Tailwind CSS -->
    <script src="https://cdn.tailwindcss.com"></script>
    <style>
        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -19,152 +18,102 @@
        .status-overdue { background-color: #fee2e2; }
        .status-unpaid { background-color: #f0f9ff; }
        .invoice-table th, .invoice-table td { padding: 0.75rem; }
+       
+       /* App Views Navigation Smoothness */
+       .app-screen {
+           display: none;
+       }
+       .app-screen.active {
+           display: block;
+       }
    </style>
 </head>
-<body class="bg-gray-50 p-4 sm:p-8">
+<body class="bg-gray-100 text-gray-800 antialiased pb-24">
 
-   <div class="max-w-7xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
-       <h1 class="text-3xl font-bold text-indigo-700 mb-6 border-b pb-3">BAW BAW AERIAL SERVICES - Invoice Manager</h1>
-       <p class="mb-6 text-gray-600">This application uses **Firebase Firestore** (a cloud database) to securely store invoices. You must be logged in to save or view data.</p>
-       
-       <!-- Authentication Section -->
-       <div class="bg-indigo-50 p-4 rounded-lg shadow-inner mb-8 space-y-4 border border-indigo-200">
-           <h3 class="text-xl font-semibold text-indigo-800">Cloud Access</h3>
-           <p class="text-sm">Status: <strong id="login-status" class="font-medium text-red-600">Checking status...</strong></p>
-           <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-               <input type="email" id="loginEmail" placeholder="Email (e.g., your@email.com)" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
-               <input type="password" id="loginPassword" placeholder="Password" class="p-2 border border-gray-300 rounded-lg flex-grow w-full sm:w-auto">
-               <button onclick="loginUser()" class="bg-indigo-600 text-white p-2 rounded-lg font-medium hover:bg-indigo-700 transition">Log In</button>
-               <button onclick="logoutUser()" class="bg-gray-400 text-white p-2 rounded-lg font-medium hover:bg-gray-500 transition">Log Out</button>
-               <button onclick="signUpUser()" class="bg-green-600 text-white p-2 rounded-lg font-medium hover:bg-green-700 transition">Sign Up</button>
+   <div id="screen-auth" class="app-screen active min-h-screen flex items-center justify-center p-4">
+       <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+           <div class="text-center mb-8">
+               <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 mb-4">
+                   <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+               </div>
+               <h1 class="text-2xl font-bold text-gray-900">Baw Baw Aerial</h1>
+               <p class="text-sm text-gray-500 mt-1">Invoice Manager Platform</p>
+           </div>
+
+           <div class="space-y-4">
+               <div>
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email Address</label>
+                   <input type="email" id="loginEmail" placeholder="your@email.com" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+               </div>
+               <div>
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Password</label>
+                   <input type="password" id="loginPassword" placeholder="••••••••" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+               </div>
+               
+               <div class="pt-2 space-y-2">
+                   <button onclick="loginUser()" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Log In</button>
+                   <button onclick="signUpUser()" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition">Create Account</button>
+               </div>
            </div>
        </div>
+   </div>
 
-       <div class="grid lg:grid-cols-2 gap-10">
-           <!-- Invoice Creation/Edit Form -->
-           <div id="invoice-form">
-               <h2 id="formTitle" class="text-2xl font-semibold text-gray-800 mb-4">Create New Invoice</h2>
-               <input type="hidden" id="editInvoiceId" value="">
-               
-               <!-- Logo and Payee Details -->
-               <div class="mb-6 p-4 border rounded-lg bg-gray-50">
-                   <h3 class="text-lg font-medium mb-3">Your Details (Payee)</h3>
-                   <div class="flex items-center space-x-4 mb-4">
-                       <img id="logoPreview" class="w-20 h-20 object-contain rounded-lg border p-1 bg-white" src="https://placehold.co/80x80/EEEEEE/888888?text=Logo" onerror="this.src='https://placehold.co/80x80/EEEEEE/888888?text=Logo'">
-                       <label class="block">
-                           <span class="sr-only">Choose logo file</span>
-                           <input type="file" id="logoInput" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"/>
-                       </label>
-                   </div>
-                   <input type="text" id="payeeName" placeholder="Your Company Name" class="input-field mb-2">
-                   <input type="text" id="payeeABN" placeholder="Your ABN/Tax ID" class="input-field mb-2">
-                   <textarea id="payeeAddress" placeholder="Your Address" class="input-field mb-2"></textarea>
-                   <input type="text" id="payeePhone" placeholder="Your Phone" class="input-field mb-2">
-                   <input type="email" id="payeeEmail" placeholder="Your Email" class="input-field mb-2">
-                   <input type="text" id="payeeBSB" placeholder="Bank BSB" class="input-field mb-2">
-                   <input type="text" id="payeeAccount" placeholder="Bank Account Number" class="input-field">
-               </div>
-
-               <!-- Client and Invoice Details -->
-               <div class="grid sm:grid-cols-2 gap-4 mb-6">
-                   <input type="text" id="invoiceNumber" placeholder="Invoice #" class="input-field">
-                   <select id="invoiceStatus" class="input-field">
-                       <option value="Unpaid">Unpaid</option>
-                       <option value="Paid">Paid</option>
-                       <option value="Cancelled">Cancelled</option>
-                   </select>
-                   <input type="date" id="invoiceDate" placeholder="Invoice Date" class="input-field">
-                   <input type="date" id="dueDate" placeholder="Due Date" class="input-field">
-               </div>
-
-               <h3 class="text-lg font-medium mb-3">Client Details (Bill To)</h3>
-               <input type="text" id="clientName" placeholder="Client Name" class="input-field mb-2">
-               <textarea id="clientAddress" placeholder="Client Address" placeholder="Client Address" class="input-field mb-2"></textarea>
-               <input type="text" id="clientPhone" placeholder="Client Phone" class="input-field mb-2">
-               <input type="email" id="clientEmail" placeholder="Client Email" class="input-field">
-               
-               <h3 class="text-lg font-medium mt-6 mb-3">Invoice Items</h3>
-               <table class="w-full text-sm mb-4">
-                   <thead>
-                       <tr class="bg-gray-100 rounded-t-lg">
-                           <th class="p-2 text-left w-1/2 rounded-tl-lg">Description</th>
-                           <th class="p-2 text-right">Qty</th>
-                           <th class="p-2 text-right">Unit Price</th>
-                           <th class="p-2 text-right rounded-tr-lg">Total</th>
-                           <th class="p-2"></th>
-                       </tr>
-                   </thead>
-                   <tbody id="itemsBody"></tbody>
-               </table>
-               <button id="addItemBtn" class="w-full bg-blue-100 text-blue-700 p-2 rounded-lg font-medium hover:bg-blue-200 transition mb-4">+ Add Item</button>
-
-               <!-- Running Totals Display -->
-               <div class="mb-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                   <div class="flex justify-between font-medium text-gray-700 mb-1">
-                       <span>Subtotal:</span>
-                       <span id="displaySubtotal">$0.00</span>
-                   </div>
-                   <div class="flex justify-between font-medium text-gray-700 border-b pb-2 mb-2">
-                       <label class="flex items-center space-x-2 text-sm">
-                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500" onchange="updateGrandTotal()">
-                           <span>GST (10%):</span>
-                       </label>
-                       <span id="displayGST">$0.00</span>
-                   </div>
-                   <div class="flex justify-between font-bold text-lg text-indigo-700">
-                       <span>GRAND TOTAL:</span>
-                       <span id="displayGrandTotal">$0.00</span>
+   <div id="app-main" class="hidden">
+       
+       <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
+           <div class="max-w-6xl mx-auto flex justify-between items-center">
+               <div class="flex items-center space-x-3">
+                   <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xl">B</div>
+                   <div>
+                       <h1 class="font-bold text-gray-800 leading-tight">Baw Baw Aerial</h1>
+                       <p class="text-xs text-gray-500" id="user-display-email">User</p>
                    </div>
                </div>
-               
-               <textarea id="notes" placeholder="Notes (e.g., Payment Terms, Disclaimers)" class="input-field mb-6 h-20"></textarea>
+               <button onclick="logoutUser()" class="text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
+           </div>
+       </header>
 
-               <div class="flex space-x-3">
-                   <button id="saveInvoiceBtn" class="w-full bg-green-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-green-700 transition">💾 Save Invoice to Cloud</button>
-                   <button id="cancelEditBtn" class="w-auto bg-gray-300 text-gray-800 p-3 rounded-lg font-medium hover:bg-gray-400 transition" style="display:none;">New / Cancel Edit</button>
-               </div>
-
+       <section id="screen-dashboard" class="app-screen max-w-6xl mx-auto p-4 sm:p-6">
+           <div class="flex justify-between items-center mb-6">
+               <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
+               <button onclick="switchScreen('invoice-editor'); resetFormForNewInvoice();" class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
+                   <span>+ New Invoice</span>
+               </button>
            </div>
 
-           <!-- Invoice List -->
-           <div id="invoice-list">
-               <h2 class="text-2xl font-semibold text-gray-800 mb-4">Saved Invoices</h2>
+           <div id="invoice-summary" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+               <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                   <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Invoiced Value</p>
+                   <p id="summaryTotalAll" class="text-3xl font-extrabold text-gray-900 mt-2">$0.00</p>
+               </div>
+               <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                   <p class="text-xs font-semibold text-red-500 uppercase tracking-wider">Total Outstanding</p>
+                   <p id="summaryTotalUnpaid" class="text-3xl font-extrabold text-red-600 mt-2">$0.00</p>
+               </div>
+           </div>
 
-               <div class="flex flex-wrap gap-4 mb-6">
-                   <div class="flex items-center space-x-2">
-                       <label for="filterStatus" class="text-sm font-medium text-gray-700">Status:</label>
-                       <select id="filterStatus" class="p-2 border rounded-lg" onchange="loadInvoicesAndRender()">
-                           <option value="All">All</option>
+           <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+               <div class="p-4 border-b border-gray-200 flex flex-wrap gap-4 justify-between items-center bg-gray-50">
+                   <h3 class="font-bold text-gray-700">Recent Invoices</h3>
+                   
+                   <div class="flex flex-wrap gap-2">
+                       <select id="filterStatus" class="p-2 text-sm border rounded-xl bg-white" onchange="loadInvoicesAndRender()">
+                           <option value="All">All Statuses</option>
                            <option value="Unpaid">Unpaid</option>
                            <option value="Paid">Paid</option>
                            <option value="Overdue">Overdue</option>
                            <option value="Cancelled">Cancelled</option>
                        </select>
-                   </div>
-                   <div class="flex items-center space-x-2">
-                       <label for="filterYear" class="text-sm font-medium text-gray-700">Financial Year:</label>
-                       <select id="filterYear" class="p-2 border rounded-lg" onchange="loadInvoicesAndRender()">
-                           <!-- Options populated by JS -->
-                       </select>
+
+                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white" onchange="loadInvoicesAndRender()">
+                           </select>
                    </div>
                </div>
 
-               <!-- Invoice Summary Block -->
-               <div id="invoice-summary" class="bg-white border rounded-lg shadow-md p-4 mb-6 grid grid-cols-2 gap-4">
-                   <div class="p-3 bg-blue-50 rounded-lg">
-                       <p class="text-xs font-medium text-blue-600 uppercase">Total Invoiced Value</p>
-                       <p id="summaryTotalAll" class="text-xl font-bold text-gray-800">$0.00</p>
-                   </div>
-                   <div class="p-3 bg-red-50 rounded-lg">
-                       <p class="text-xs font-medium text-red-600 uppercase">Total Still Unpaid</p>
-                       <p id="summaryTotalUnpaid" class="text-xl font-bold text-gray-800">$0.00</p>
-                   </div>
-               </div>
-
-               <div class="overflow-x-auto rounded-lg border">
+               <div class="overflow-x-auto">
                    <table class="invoice-table w-full text-sm">
                        <thead>
-                           <tr class="bg-gray-100">
+                           <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b">
                                <th class="text-left">#</th>
                                <th class="text-left">Client</th>
                                <th class="text-left">Date</th>
@@ -174,18 +123,167 @@
                            </tr>
                        </thead>
                        <tbody id="invoiceTableBody">
-                           <tr><td colspan="6" class="text-center p-4 text-gray-500">Please log in to load invoices.</td></tr>
+                           <tr><td colspan="6" class="text-center p-4 text-gray-500">Loading invoices...</td></tr>
                        </tbody>
                    </table>
                </div>
            </div>
+       </section>
+
+       <section id="screen-invoice-editor" class="app-screen max-w-4xl mx-auto p-4 sm:p-6">
+           <div id="invoice-form" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+               <div class="flex justify-between items-center mb-6 pb-4 border-b">
+                   <h2 id="formTitle" class="text-2xl font-bold text-gray-800">Create New Invoice</h2>
+                   <button onclick="switchScreen('dashboard')" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+               </div>
+               
+               <input type="hidden" id="editInvoiceId" value="">
+               
+               <div class="mb-8 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Your Business Details (Payee)</h3>
+                   <div class="flex items-center space-x-4 mb-4">
+                       <img id="logoPreview" class="w-16 h-16 object-contain rounded-xl border bg-white p-1" src="https://placehold.co/80x80/EEEEEE/888888?text=Logo" onerror="this.src='https://placehold.co/80x80/EEEEEE/888888?text=Logo'">
+                       <label class="block">
+                           <span class="sr-only">Choose logo file</span>
+                           <input type="file" id="logoInput" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                       </label>
+                   </div>
+                   <div class="grid sm:grid-cols-2 gap-3">
+                       <input type="text" id="payeeName" placeholder="Your Company Name" class="input-field">
+                       <input type="text" id="payeeABN" placeholder="Your ABN/Tax ID" class="input-field">
+                       <textarea id="payeeAddress" placeholder="Your Address" class="input-field sm:col-span-2 h-20"></textarea>
+                       <input type="text" id="payeePhone" placeholder="Your Phone" class="input-field">
+                       <input type="email" id="payeeEmail" placeholder="Your Email" class="input-field">
+                       <input type="text" id="payeeBSB" placeholder="Bank BSB" class="input-field">
+                       <input type="text" id="payeeAccount" placeholder="Bank Account Number" class="input-field">
+                   </div>
+               </div>
+
+               <div class="mb-8">
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Invoice Meta</h3>
+                   <div class="grid sm:grid-cols-2 gap-3">
+                       <div>
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">Invoice Number</label>
+                           <input type="text" id="invoiceNumber" placeholder="Invoice #" class="input-field">
+                       </div>
+                       <div>
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                           <select id="invoiceStatus" class="input-field">
+                               <option value="Unpaid">Unpaid</option>
+                               <option value="Paid">Paid</option>
+                               <option value="Cancelled">Cancelled</option>
+                           </select>
+                       </div>
+                       <div>
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">Invoice Date</label>
+                           <input type="date" id="invoiceDate" class="input-field">
+                       </div>
+                       <div>
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">Due Date</label>
+                           <input type="date" id="dueDate" class="input-field">
+                       </div>
+                   </div>
+               </div>
+
+               <div class="mb-8">
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Client Details (Bill To)</h3>
+                   <div class="grid sm:grid-cols-2 gap-3">
+                       <input type="text" id="clientName" placeholder="Client Name" class="input-field sm:col-span-2">
+                       <textarea id="clientAddress" placeholder="Client Address" class="input-field sm:col-span-2 h-20"></textarea>
+                       <input type="text" id="clientPhone" placeholder="Client Phone" class="input-field">
+                       <input type="email" id="clientEmail" placeholder="Client Email" class="input-field">
+                   </div>
+               </div>
+               
+               <div class="mb-8">
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Line Items</h3>
+                   <div class="overflow-x-auto border rounded-xl mb-3">
+                       <table class="w-full text-sm">
+                           <thead>
+                               <tr class="bg-gray-50 border-b text-gray-600 text-xs">
+                                   <th class="p-3 text-left">Description</th>
+                                   <th class="p-3 text-right w-20">Qty</th>
+                                   <th class="p-3 text-right w-28">Unit Price</th>
+                                   <th class="p-3 text-right w-28">Total</th>
+                                   <th class="p-3 w-10"></th>
+                               </tr>
+                           </thead>
+                           <tbody id="itemsBody"></tbody>
+                       </table>
+                   </div>
+                   <button id="addItemBtn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-600 p-2.5 rounded-xl font-medium hover:bg-indigo-100 transition text-sm">+ Add Line Item</button>
+               </div>
+
+               <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                   <div class="flex justify-between font-medium text-gray-600 text-sm">
+                       <span>Subtotal:</span>
+                       <span id="displaySubtotal">$0.00</span>
+                   </div>
+                   <div class="flex justify-between font-medium text-gray-600 text-sm border-b pb-2">
+                       <label class="flex items-center space-x-2">
+                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500" onchange="updateGrandTotal()">
+                           <span>Include GST (10%)</span>
+                       </label>
+                       <span id="displayGST">$0.00</span>
+                   </div>
+                   <div class="flex justify-between font-bold text-lg text-indigo-700 pt-1">
+                       <span>Grand Total:</span>
+                       <span id="displayGrandTotal">$0.00</span>
+                   </div>
+               </div>
+               
+               <div class="mb-8">
+                   <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Notes & Terms</label>
+                   <textarea id="notes" placeholder="Payment Terms, Disclaimers, Bank details notes..." class="input-field h-24"></textarea>
+               </div>
+
+               <div class="flex space-x-3">
+                   <button id="saveInvoiceBtn" class="flex-grow bg-green-600 text-white p-3.5 rounded-xl font-semibold hover:bg-green-700 transition shadow-lg shadow-green-100">💾 Save Invoice to Cloud</button>
+                   <button id="cancelEditBtn" class="bg-gray-200 text-gray-700 p-3.5 rounded-xl font-semibold hover:bg-gray-300 transition" style="display:none;">Cancel</button>
+               </div>
+
+           </div>
+       </section>
+
+       <section id="screen-settings" class="app-screen max-w-2xl mx-auto p-4 sm:p-6">
+           <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+               <h2 class="text-2xl font-bold text-gray-800 mb-4">App Settings</h2>
+               <p class="text-sm text-gray-500 mb-6">Manage local defaults and global configurations.</p>
+               
+               <div class="space-y-4">
+                   <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                       <p class="text-xs text-indigo-600 font-semibold uppercase">Cloud Connection</p>
+                       <p class="text-sm font-medium text-indigo-900 mt-1">Status: Active (Firebase Firestore)</p>
+                   </div>
+                   <button onclick="logoutUser()" class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">Log Out of Account</button>
+               </div>
+           </div>
+       </section>
+
+       <div class="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+           <nav class="bg-white/90 backdrop-blur-md border border-gray-200 shadow-2xl rounded-full p-2 flex items-center space-x-2 pointer-events-auto">
+               <button onclick="switchScreen('dashboard')" id="nav-dashboard" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold transition bg-indigo-600 text-white shadow-md">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                   <span>Dashboard</span>
+               </button>
+               
+               <button onclick="switchScreen('invoice-editor'); resetFormForNewInvoice();" id="nav-invoice-editor" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                   <span>New Invoice</span>
+               </button>
+
+               <button onclick="switchScreen('settings')" id="nav-settings" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                   <span>Settings</span>
+               </button>
+           </nav>
        </div>
+
    </div>
 
-   <!-- Reusable styles for inputs -->
    <style>
        .input-field {
-           @apply w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150;
+           @apply w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm outline-none;
        }
    </style>
 
@@ -209,14 +307,13 @@
          getDocs,
          addDoc,
          updateDoc,
-         setDoc, // Added setDoc for potential future use or consistency
          deleteDoc,
          serverTimestamp,
          doc
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
        // =========================================================================
-       // USER'S FIREBASE CONFIGURATION (Provided by user)
+       // USER'S FIREBASE CONFIGURATION
        // =========================================================================
        const firebaseConfig = {
          apiKey: "AIzaSyDFk7MaEfHd7ApFYS7TztSFphtspT4-axo",
@@ -239,9 +336,9 @@
        const itemsBody = document.getElementById('itemsBody');
        const logoPreview = document.getElementById('logoPreview');
        const invoiceTableBody = document.getElementById('invoiceTableBody');
-       const loginStatus = document.getElementById('login-status');
        const loginEmailInput = document.getElementById('loginEmail');
        const loginPasswordInput = document.getElementById('loginPassword');
+       const userDisplayEmail = document.getElementById('user-display-email');
        
        const displaySubtotal = document.getElementById('displaySubtotal');
        const displayGST = document.getElementById('displayGST');
@@ -255,30 +352,47 @@
        const summaryTotalAll = document.getElementById('summaryTotalAll');
        const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
 
-       // --- State and helpers (Logo and Payee still use Local Storage for simplicity) ---
+       // --- App Navigation State Manager ---
+       window.switchScreen = function(screenName) {
+           document.querySelectorAll('.app-screen').forEach(screen => {
+               screen.classList.remove('active');
+           });
+           
+           document.querySelectorAll('.nav-btn').forEach(btn => {
+               btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+               btn.classList.add('text-gray-600');
+           });
+
+           const targetScreen = document.getElementById(`screen-${screenName}`);
+           if (targetScreen) targetScreen.classList.add('active');
+
+           const targetBtn = document.getElementById(`nav-${screenName}`);
+           if (targetBtn) {
+               targetBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+               targetBtn.classList.remove('text-gray-600');
+           }
+
+           window.scrollTo(0, 0);
+       }
+
+       // --- State and helpers ---
        let logoDataURL = localStorage.getItem('invoiceLogo')||'';
        
-       // --- Set initial date values for better UX ---
        const today = new Date().toISOString().split('T')[0];
        const dueDateDefault = new Date();
        dueDateDefault.setDate(dueDateDefault.getDate() + 14);
        const dueDateValue = dueDateDefault.toISOString().split('T')[0];
        
-       // --- Utility Functions ---
        function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
        function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
        function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
 
-       /**
-        * Determines the Australian financial year (Jul 1 - Jun 30) for a given date.
-        */
        function getFinancialYear(dateString) {
            if (!dateString) return 'N/A';
            const date = new Date(dateString + 'T00:00:00');
            const year = date.getFullYear();
-           const month = date.getMonth(); // 0 = Jan, 6 = Jul
+           const month = date.getMonth();
            
-           // If month is July (6) or later, it's the current year to next year.
            if (month >= 6) {
                return `${year}-${year + 1}`;
            } else {
@@ -339,18 +453,16 @@
        // --- Items ---
        function addItemRow(desc='', qty=1, unit=0){
          const tr = document.createElement('tr');
-         tr.className = "border-t border-gray-200";
+         tr.className = "border-b border-gray-100";
          tr.innerHTML = `
-           <td class="p-2"><input class="it-desc w-full" value="${escapeHtml(desc)}" placeholder="Description" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="p-2"><input class="it-qty w-full text-right" type="number" min="0" value="${qty}" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="p-2"><input class="it-unit w-full text-right" type="number" min="0" step="0.01" value="${unit}" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="it-total p-2 text-right font-medium">${formatCurrency(qty*unit)}</td>
-           <td class="p-2"><button type="button" class="remove text-red-500 hover:text-red-700 transition font-medium">X</button></td>`;
+           <td class="p-2"><input class="it-desc input-field" value="${escapeHtml(desc)}" placeholder="Item Description" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="p-2"><input class="it-qty input-field text-right" type="number" min="0" value="${qty}" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="p-2"><input class="it-unit input-field text-right" type="number" min="0" step="0.01" value="${unit}" oninput="updateTotalRow(this.closest('tr'))"></td>
+           <td class="it-total p-2 text-right font-medium text-gray-700">${formatCurrency(qty*unit)}</td>
+           <td class="p-2 text-center"><button type="button" class="remove text-red-500 hover:text-red-700 font-bold p-1">✕</button></td>`;
          itemsBody.appendChild(tr);
 
          tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); updateGrandTotal(); });
-         
-         // Add input change listeners to trigger total update
          tr.querySelectorAll('input').forEach(input => input.addEventListener('input', updateGrandTotal));
 
          updateGrandTotal();
@@ -362,15 +474,14 @@
            const q = parseFloat(qtyInput.value || 0);
            const u = parseFloat(unitInput.value || 0);
            tr.querySelector('.it-total').textContent = formatCurrency(q * u);
-           updateGrandTotal(); // Call to update the running grand total
+           updateGrandTotal();
        }
 
        document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
        document.getElementById('includeGST').addEventListener('change', updateGrandTotal);
 
        // --- Reset Form Function ---
-       function resetFormForNewInvoice() {
-           // Reset main fields
+       window.resetFormForNewInvoice = function() {
            document.getElementById('clientName').value='';
            document.getElementById('clientPhone').value='';
            document.getElementById('clientEmail').value='';
@@ -382,10 +493,8 @@
            document.getElementById('includeGST').checked = true;
            document.getElementById('invoiceStatus').value = 'Unpaid';
            
-           // Clear items and add one default row
            itemsBody.innerHTML=''; addItemRow();
            
-           // Reset Edit state indicators
            editInvoiceIdInput.value = '';
            formTitle.textContent = 'Create New Invoice';
            saveInvoiceBtn.textContent = '💾 Save Invoice to Cloud';
@@ -394,16 +503,17 @@
 
            updateGrandTotal();
        }
-       cancelEditBtn.addEventListener('click', resetFormForNewInvoice);
+       cancelEditBtn.addEventListener('click', () => {
+           resetFormForNewInvoice();
+           switchScreen('dashboard');
+       });
 
-
-       // --- Save/Update invoice (ASYNC CLOUD FUNCTION) ---
+       // --- Save/Update invoice ---
        async function saveInvoice(){
          if(!userId){ alert('Please log in first to save invoices.'); return; }
 
          const invoiceIdToEdit = editInvoiceIdInput.value;
          
-         // 1. Collect Items and Calculate Totals
          const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
            const desc = r.querySelector('.it-desc').value || '';
            const qty = parseFloat(r.querySelector('.it-qty').value)||0;
@@ -416,7 +526,6 @@
          const gst = includeGST ? subtotal * 0.10 : 0;
          const total = subtotal + gst;
 
-         // 2. Create Invoice Object (excluding dynamic payee data for update, as it's saved locally)
          const invData = {
            clientName: document.getElementById('clientName').value || '',
            clientPhone: document.getElementById('clientPhone').value || '',
@@ -449,16 +558,10 @@
          
          try {
            if (invoiceIdToEdit) {
-               // --- UPDATE EXISTING INVOICE ---
                const invoiceRef = doc(db, 'invoices', invoiceIdToEdit);
-               // Don't update the creation timestamp
                await updateDoc(invoiceRef, invData);
                alert(`Invoice #${invData.invoiceNumber} updated successfully!`);
-               
            } else {
-               // --- CREATE NEW INVOICE ---
-
-               // 3. Check for unique invoice number for the user (only for new creation)
                const q = query(collection(db, 'invoices'),
                  where('invoiceNumber', '==', invData.invoiceNumber),
                  where('userId', '==', userId)
@@ -466,25 +569,22 @@
                const existing = await getDocs(q);
 
                if(existing.docs.length > 0){
-                   alert(`Invoice number ${invData.invoiceNumber} already exists for your user account.`);
+                   alert(`Invoice number ${invData.invoiceNumber} already exists.`);
                    return;
                }
                
-               // Add creation timestamp only when creating
                invData.createdAt = serverTimestamp();
-               
-               // 4. Save to Firestore
                await addDoc(collection(db, 'invoices'), invData);
-               alert('Invoice saved successfully to the cloud!');
+               alert('Invoice saved successfully!');
            }
            
-           // 5. Reset form and reload list
            resetFormForNewInvoice();
            await loadInvoicesAndRender();
+           switchScreen('dashboard');
 
          } catch(e){
-           console.error(invoiceIdToEdit ? "Error updating document: " : "Error saving document: ", e);
-           alert(`Failed to ${invoiceIdToEdit ? 'update' : 'save'} invoice. Check console for details.`);
+           console.error("Error saving document: ", e);
+           alert(`Failed to save invoice. Check console for details.`);
          }
        }
 
@@ -493,16 +593,14 @@
        // --- Edit Invoice Function ---
        window.editInvoice = function(id) {
            const inv = invoices.find(i => i.id === id);
-           if (!inv) { alert('Invoice not found for editing.'); return; }
+           if (!inv) { alert('Invoice not found.'); return; }
            
-           // Set Edit state indicators
            editInvoiceIdInput.value = inv.id;
            formTitle.textContent = `Editing Invoice #${inv.invoiceNumber}`;
            saveInvoiceBtn.textContent = '✅ Update Invoice';
            saveInvoiceBtn.classList.replace('bg-green-600', 'bg-indigo-600');
            cancelEditBtn.style.display = 'inline-block';
 
-           // Populate fields
            document.getElementById('clientName').value = inv.clientName || '';
            document.getElementById('clientPhone').value = inv.clientPhone || '';
            document.getElementById('clientEmail').value = inv.clientEmail || '';
@@ -515,13 +613,11 @@
            document.getElementById('includeGST').checked = inv.includeGST !== undefined ? inv.includeGST : true;
            document.getElementById('notes').value = inv.notes || '';
 
-           // Handle Logo update (update local state/preview only)
            if (inv.logo) {
                logoDataURL = inv.logo;
                logoPreview.src = inv.logo;
            }
 
-           // Populate items table
            itemsBody.innerHTML = '';
            if (inv.items && inv.items.length > 0) {
                inv.items.forEach(item => addItemRow(item.description, item.qty, item.unit));
@@ -529,23 +625,17 @@
                addItemRow();
            }
 
-           // Scroll to the top of the form
-           document.getElementById('invoice-form').scrollIntoView({ behavior: 'smooth' });
+           switchScreen('invoice-editor');
        }
 
-
-       // --- Invoice list rendering (ASYNC CLOUD FUNCTION) ---
+       // --- Invoice list rendering ---
        async function loadInvoicesAndRender(){
          if(!userId) {
-           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and save invoices.</td></tr>';
+           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in.</td></tr>';
            summaryTotalAll.textContent = formatCurrency(0);
            summaryTotalUnpaid.textContent = formatCurrency(0);
-           loginStatus.textContent = 'Logged out';
-           loginStatus.classList.replace('text-green-600', 'text-red-600');
            return;
          }
-         loginStatus.textContent = `Logged in as ${auth.currentUser.email}`;
-         loginStatus.classList.replace('text-red-600', 'text-green-600');
 
          invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
          
@@ -554,42 +644,30 @@
            const filterYearValue = document.getElementById('filterYear').value;
            const todayForCheck = new Date().toISOString().split('T')[0];
            
-           // 1. Build Query (filter by user ID is CRITICAL)
-           let q = query(collection(db, 'invoices'),
-                       where('userId', '==', userId)
-                   );
-           
+           let q = query(collection(db, 'invoices'), where('userId', '==', userId));
            const snapshot = await getDocs(q);
            
-           // 2. Map documents to array, including the Firestore document ID
            invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
            
-           // 3. Sort client-side by creation date (newest first)
            invoices.sort((a, b) => {
                const aTime = b.createdAt ? b.createdAt.seconds : 0;
                const bTime = a.createdAt ? a.createdAt.seconds : 0;
-               return bTime - aTime; // Sort descending (newest first)
+               return bTime - aTime;
            });
 
-           // 4. Apply Filters and calculate Overdue status
            let totalAll = 0;
            let totalUnpaid = 0;
 
            let filteredInvoices = invoices.filter(inv => {
-               // Determine overdue status
                if(inv.status !== 'Paid' && inv.dueDate && inv.dueDate < todayForCheck) {
                    inv.status = 'Overdue';
                }
 
-               // Check Financial Year filter
                const isCorrectYear = filterYearValue === 'All' || getFinancialYear(inv.invoiceDate) === filterYearValue;
-
-               // Check Status filter
                const isCorrectStatus = filterStatus === 'All' || inv.status === filterStatus;
 
-               // Calculate Totals based only on year filter
                if (isCorrectYear) {
-                   totalAll += inv.total || 0; // Use the saved total
+                   totalAll += inv.total || 0;
                    if (inv.status !== 'Paid' && inv.status !== 'Cancelled') {
                        totalUnpaid += inv.total || 0;
                    }
@@ -598,60 +676,55 @@
                return isCorrectYear && isCorrectStatus;
            });
 
-           // 5. Update Summary Display
            summaryTotalAll.textContent = formatCurrency(totalAll);
            summaryTotalUnpaid.textContent = formatCurrency(totalUnpaid);
            
-           // 6. Render Table
            invoiceTableBody.innerHTML='';
            
            if(filteredInvoices.length === 0){
-               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No matching invoices found.</td></tr>`;
+               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No invoices found.</td></tr>`;
            }
 
            filteredInvoices.forEach((inv)=>{
                const tr = document.createElement('tr');
-               tr.className = `border-t border-gray-200 ${inv.status === 'Paid' ? 'status-paid' : inv.status === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
+               tr.className = `border-b border-gray-100 ${inv.status === 'Paid' ? 'status-paid' : inv.status === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
                tr.innerHTML = `
-                 <td class="p-3">${escapeHtml(inv.invoiceNumber)}</td>
+                 <td class="p-3 font-semibold">${escapeHtml(inv.invoiceNumber)}</td>
                  <td class="p-3">${escapeHtml(inv.clientName)}</td>
-                 <td class="p-3">${escapeHtml(inv.invoiceDate)}</td>
-                 <td class="p-3">${escapeHtml(inv.dueDate||'')}</td>
-                 <td class="p-3 font-medium">${escapeHtml(inv.status)}</td>
+                 <td class="p-3 text-gray-600">${escapeHtml(inv.invoiceDate)}</td>
+                 <td class="p-3 text-gray-600">${escapeHtml(inv.dueDate||'')}</td>
+                 <td class="p-3 font-bold">${escapeHtml(inv.status)}</td>
                  <td class="p-3 space-x-1">
-                   <button data-id="${inv.id}" class="openBtn bg-indigo-500 text-white text-xs p-1 rounded hover:bg-indigo-600">Open</button>
-                   <button data-id="${inv.id}" class="editBtn bg-blue-500 text-white text-xs p-1 rounded hover:bg-blue-600">Edit</button>
-                   <button data-id="${inv.id}" class="payBtn bg-yellow-500 text-white text-xs p-1 rounded hover:bg-yellow-600">Paid</button>
-                   <button data-id="${inv.id}" class="delBtn bg-red-500 text-white text-xs p-1 rounded hover:bg-red-600">Delete</button>
+                   <button data-id="${inv.id}" class="openBtn bg-indigo-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-indigo-700">Open</button>
+                   <button data-id="${inv.id}" class="editBtn bg-blue-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-700">Edit</button>
+                   <button data-id="${inv.id}" class="payBtn bg-green-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-green-700">Paid</button>
+                   <button data-id="${inv.id}" class="delBtn bg-red-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-700">Del</button>
                  </td>`;
                invoiceTableBody.appendChild(tr);
            });
 
-           // 7. Attach event listeners
            document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
            document.querySelectorAll('.editBtn').forEach(b=>b.addEventListener('click', e=>editInvoice(e.currentTarget.dataset.id)));
            document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>updateInvoiceStatus(e.currentTarget.dataset.id, 'Paid')));
            document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
-               // NOTE: Using window.confirm() here as a quick UI solution, but ideally this would be a custom modal/dialog.
-               if(window.confirm('Are you sure you want to permanently delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
+               if(window.confirm('Are you sure you want to delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
            }));
 
          } catch(e) {
            console.error("Error loading documents: ", e);
-           invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-red-500 p-4">ERROR loading invoices. Check Firebase rules.</td></tr>';
+           invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
          }
        }
 
-       // --- Cloud Actions (Update/Delete) ---
+       // --- Cloud Actions ---
        async function updateInvoiceStatus(id, newStatus){
          try {
            const invoiceRef = doc(db, 'invoices', id);
            await updateDoc(invoiceRef, { status: newStatus });
-           alert(`Invoice status set to ${newStatus} successfully!`);
            await loadInvoicesAndRender();
          } catch(e) {
            console.error("Error updating document: ", e);
-           alert('Failed to update status. Please check the console for details, and ensure your Firebase Security Rules allow updates.');
+           alert('Failed to update status.');
          }
        }
 
@@ -659,15 +732,14 @@
          try {
            const invoiceRef = doc(db, 'invoices', id);
            await deleteDoc(invoiceRef);
-           alert('Invoice deleted successfully!');
            await loadInvoicesAndRender();
          } catch(e) {
            console.error("Error deleting document: ", e);
-           alert('Failed to delete invoice. Please check the console for details, and ensure your Firebase Security Rules allow deletions.');
+           alert('Failed to delete invoice.');
          }
        }
 
-       // --- Open invoice (New tab - same logic) ---
+       // --- Open printable invoice ---
        window.openInvoice = function(id){
          const inv = invoices.find(i => i.id === id);
          if (!inv) return;
@@ -678,20 +750,17 @@
 
          const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
 
-         // Basic HTML for printable invoice view
-         const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right} .disclaimer{margin-top:30px;font-size:13px;color:#444;background:#fafafa;padding:12px}</style></head><body>`
+         const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right}</style></head><body>`
            + `<div class="row"><div>`
            + (inv.logo?`<img src="${escapeHtml(inv.logo)}" style="max-width:220px;display:block;margin-bottom:10px">`:'')
            + `<strong>${escapeHtml(inv.payeeName||'')}</strong><br>ABN: ${escapeHtml(inv.payeeABN||'')}<br>${escapeHtml(inv.payeeAddress||'')}<br>Phone: ${escapeHtml(inv.payeePhone||'')}<br>Email: ${escapeHtml(inv.payeeEmail||'')}</div>`
-           + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Status:</strong> <span style="font-weight:bold; color:${inv.status==='Paid'?'green':'red'}">${escapeHtml(inv.status)}</span><br><strong>Pay To:</strong> ${escapeHtml(inv.payeeName||'')}<br><strong>BSB:</strong> ${escapeHtml(inv.payeeBSB||'')}<br><strong>Account:</strong> ${escapeHtml(inv.payeeAccount||'')}</div></div></div>`
+           + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Status:</strong> <span style="font-weight:bold; color:${inv.status==='Paid'?'green':'red'}">${escapeHtml(inv.status)}</span></div></div></div>`
            + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
            + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
            + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
            + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
            + `<div style="font-weight:bold; font-size:1.2em;">Total: ${formatCurrency(total)}</div></div>`
-           + `<div class="msg"><strong>Notes:</strong> ${escapeHtml(inv.notes)}</div>`
-           + `<div class="disclaimer">All services must be paid within 14 days. A late fee may apply.</div>`
-           + `<div style="margin-top:30px"></div></body></html>`;
+           + `<div class="msg"><strong>Notes:</strong> ${escapeHtml(inv.notes)}</div></body></html>`;
 
          const w = window.open();
          w.document.write(html);
@@ -703,7 +772,6 @@
            const currentYear = new Date().getFullYear();
            const yearOptions = ['All'];
            
-           // Generate last 5 years + current year + next year
            for(let i = currentYear - 5; i <= currentYear + 1; i++){
                yearOptions.push(`${i}-${i + 1}`);
            }
@@ -713,9 +781,8 @@
            ).join('');
        }
 
-
        // =========================================================================
-       // AUTHENTICATION FUNCTIONS (Exposed globally for HTML onclick)
+       // AUTHENTICATION FUNCTIONS
        // =========================================================================
 
        window.signUpUser = function() {
@@ -725,13 +792,8 @@
          if (!email || !password) { alert('Please enter an email and password to sign up.'); return; }
          
          createUserWithEmailAndPassword(auth, email, password)
-           .then((userCredential) => {
-             alert("Sign Up Successful! You are now logged in.");
-           })
-           .catch((error) => {
-             console.error("Sign Up Error:", error);
-             alert('Sign Up Error: ' + error.message);
-           });
+           .then(() => alert("Sign Up Successful! You are now logged in."))
+           .catch((error) => alert('Sign Up Error: ' + error.message));
        }
 
        window.loginUser = function() {
@@ -741,51 +803,46 @@
          if (!email || !password) { alert('Please enter an email and password to log in.'); return; }
 
          signInWithEmailAndPassword(auth, email, password)
-           .then((userCredential) => {
-             alert("Logged in successfully!");
-           })
-           .catch((error) => {
-             console.error("Login Error:", error);
-             alert('Login Error: ' + error.message);
-           });
+           .then(() => {})
+           .catch((error) => alert('Login Error: ' + error.message));
        }
 
        window.logoutUser = function() {
          signOut(auth).then(() => {
-           alert("Logged out successfully.");
-         }).catch((error) => {
-           console.error("Logout Error:", error);
-           alert('Logout Error: ' + error.message);
-         });
+           // Screen reset happens via onAuthStateChanged
+         }).catch((error) => alert('Logout Error: ' + error.message));
        }
        
        // =========================================================================
        // INITIALIZATION
        // =========================================================================
 
-       // Attach listener to check auth status on load
        onAuthStateChanged(auth, async (user) => {
+         const authScreen = document.getElementById('screen-auth');
+         const appMain = document.getElementById('app-main');
+
          if (user) {
            userId = user.uid;
-           loginStatus.textContent = `Logged in as ${user.email}`;
-           loginStatus.classList.replace('text-red-600', 'text-green-600');
+           userDisplayEmail.textContent = user.email;
+           authScreen.classList.remove('active');
+           appMain.classList.remove('hidden');
+           switchScreen('dashboard');
            await loadInvoicesAndRender();
          } else {
            userId = null;
-           await loadInvoicesAndRender();
+           appMain.classList.add('hidden');
+           authScreen.classList.add('active');
          }
        });
 
        (function init(){
          loadPayeeFromStorage();
          if(logoDataURL) logoPreview.src = logoDataURL;
-         // Set initial invoice number and dates
          document.getElementById('invoiceNumber').value = generateInvoiceNumber();
          document.getElementById('invoiceDate').value = today;
          document.getElementById('dueDate').value = dueDateValue;
          
          if(itemsBody.children.length===0) addItemRow();
-         document.getElementById('clientName').focus();
          populateFinancialYearFilter();
        })();
 
