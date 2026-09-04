@@ -6,6 +6,8 @@
    <title>Cloud Invoice Manager</title>
    <!-- Load Tailwind CSS -->
    <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Load html2pdf.js for Client-Side PDF Generation -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
    <style>
        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
        body { font-family: 'Inter', sans-serif; }
@@ -16,24 +18,17 @@
        }
        input[type="number"] { -moz-appearance: textfield; }
        .status-paid { background-color: #d1fae5; }
+       .status-partial { background-color: #fef3c7; }
        .status-overdue { background-color: #fee2e2; }
        .status-unpaid { background-color: #f0f9ff; }
        .invoice-table th, .invoice-table td { padding: 0.75rem; }
        
-       /* App Views Navigation */
-       .app-screen {
-           display: none;
-       }
-       .app-screen.active {
-           display: block;
-       }
+       .app-screen { display: none; }
+       .app-screen.active { display: block; }
    </style>
 </head>
 <body class="bg-gray-100 text-gray-800 antialiased pb-24">
 
-   <!-- ========================================== -->
-   <!-- MAIN APP CONTAINER                         -->
-   <!-- ========================================== -->
    <div id="app-main">
        
        <!-- TOP HEADER BAR -->
@@ -71,7 +66,7 @@
                    <p id="summaryTotalAll" class="text-3xl font-extrabold text-gray-900 mt-2">$0.00</p>
                </div>
                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                   <p class="text-xs font-semibold text-red-500 uppercase tracking-wider">Total Outstanding</p>
+                   <p class="text-xs font-semibold text-red-500 uppercase tracking-wider">Total Outstanding Balance</p>
                    <p id="summaryTotalUnpaid" class="text-3xl font-extrabold text-red-600 mt-2">$0.00</p>
                </div>
            </div>
@@ -85,14 +80,13 @@
                        <select id="filterStatus" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
                            <option value="All">All Statuses</option>
                            <option value="Unpaid">Unpaid</option>
+                           <option value="Partial">Partially Paid</option>
                            <option value="Paid">Paid</option>
                            <option value="Overdue">Overdue</option>
                            <option value="Cancelled">Cancelled</option>
                        </select>
 
-                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
-                           <!-- Options populated by JS -->
-                       </select>
+                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"></select>
 
                        <button id="applyFilterBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">Apply Filter</button>
                    </div>
@@ -105,7 +99,7 @@
                                <th class="text-left">#</th>
                                <th class="text-left">Client</th>
                                <th class="text-left">Date</th>
-                               <th class="text-left">Due</th>
+                               <th class="text-left">Balance Due</th>
                                <th class="text-left">Status</th>
                                <th class="text-left">Actions</th>
                            </tr>
@@ -163,6 +157,7 @@
                            <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
                            <select id="invoiceStatus" class="input-field">
                                <option value="Unpaid">Unpaid</option>
+                               <option value="Partial">Partially Paid</option>
                                <option value="Paid">Paid</option>
                                <option value="Cancelled">Cancelled</option>
                            </select>
@@ -213,8 +208,8 @@
                    <button id="addItemBtn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-600 p-2.5 rounded-xl font-medium hover:bg-indigo-100 transition text-sm">+ Add Line Item</button>
                </div>
 
-               <!-- Totals -->
-               <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+               <!-- Totals & Payments -->
+               <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
                    <div class="flex justify-between font-medium text-gray-600 text-sm">
                        <span>Subtotal:</span>
                        <span id="displaySubtotal">$0.00</span>
@@ -226,9 +221,21 @@
                        </label>
                        <span id="displayGST">$0.00</span>
                    </div>
-                   <div class="flex justify-between font-bold text-lg text-indigo-700 pt-1">
+                   <div class="flex justify-between font-bold text-base text-gray-800">
                        <span>Grand Total:</span>
                        <span id="displayGrandTotal">$0.00</span>
+                   </div>
+                   
+                   <!-- Partial Payments Inputs -->
+                   <div class="pt-2 border-t border-gray-200 grid sm:grid-cols-2 gap-3 items-center">
+                       <div>
+                           <label class="block text-xs font-semibold text-gray-600">Amount Paid So Far ($)</label>
+                           <input type="number" id="amountPaid" min="0" step="0.01" value="0.00" class="input-field mt-1" oninput="updateGrandTotal()">
+                       </div>
+                       <div class="text-right sm:self-end pb-1">
+                           <span class="block text-xs font-semibold text-gray-500 uppercase">Remaining Balance Due</span>
+                           <span id="displayBalanceDue" class="text-xl font-black text-red-600">$0.00</span>
+                       </div>
                    </div>
                </div>
                
@@ -320,6 +327,9 @@
        </div>
    </div>
 
+   <!-- HIDDEN CONTAINER FOR PDF RENDERING -->
+   <div id="pdfRenderContainer" style="display:none;"></div>
+
    <style>
        .input-field {
            @apply w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm outline-none;
@@ -378,6 +388,9 @@
        const displaySubtotal = document.getElementById('displaySubtotal');
        const displayGST = document.getElementById('displayGST');
        const displayGrandTotal = document.getElementById('displayGrandTotal');
+       const displayBalanceDue = document.getElementById('displayBalanceDue');
+       const amountPaidInput = document.getElementById('amountPaid');
+       
        const filterYear = document.getElementById('filterYear');
        const filterStatus = document.getElementById('filterStatus');
        const saveInvoiceBtn = document.getElementById('saveInvoiceBtn');
@@ -394,18 +407,11 @@
 
        headerLoginBtn.addEventListener('click', openAuthModal);
        document.getElementById('closeAuthModalBtn').addEventListener('click', closeAuthModal);
-
-       // Close modal when clicking outside of modal card
-       authModal.addEventListener('click', (e) => {
-           if (e.target === authModal) closeAuthModal();
-       });
+       authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
 
        // --- Screen Switcher ---
        window.switchScreen = function(screenName) {
-           document.querySelectorAll('.app-screen').forEach(screen => {
-               screen.classList.remove('active');
-           });
-           
+           document.querySelectorAll('.app-screen').forEach(screen => screen.classList.remove('active'));
            document.querySelectorAll('.nav-btn').forEach(btn => {
                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
                btn.classList.add('text-gray-600');
@@ -419,7 +425,6 @@
                targetBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
                targetBtn.classList.remove('text-gray-600');
            }
-
            window.scrollTo(0, 0);
        };
 
@@ -438,15 +443,9 @@
            if (!dateString) return 'N/A';
            const parts = dateString.split('-');
            if (parts.length < 3) return 'N/A';
-           
            const year = parseInt(parts[0], 10);
            const month = parseInt(parts[1], 10);
-           
-           if (month >= 7) {
-               return `${year}-${year + 1}`;
-           } else {
-               return `${year - 1}-${year}`;
-           }
+           return month >= 7 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
        }
        
        function savePayeeToStorage(){
@@ -454,11 +453,15 @@
            localStorage.setItem(id, document.getElementById(id).value);
          });
        }
+       
+       // Pre-populates business information from localStorage
        function loadPayeeFromStorage(){
          ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
            const el = document.getElementById(id);
-           el.value = localStorage.getItem(id)||el.value;
-           el.addEventListener('change', savePayeeToStorage);
+           if (localStorage.getItem(id)) {
+             el.value = localStorage.getItem(id);
+           }
+           el.addEventListener('input', savePayeeToStorage);
          });
        }
 
@@ -491,10 +494,22 @@
            const includeGST = document.getElementById('includeGST').checked;
            const gst = includeGST ? subtotal * 0.10 : 0;
            const grandTotal = subtotal + gst;
+           
+           const paid = parseFloat(amountPaidInput.value || 0);
+           const balance = Math.max(0, grandTotal - paid);
+
+           // Auto-update status based on balance
+           const statusSelect = document.getElementById('invoiceStatus');
+           if (paid >= grandTotal && grandTotal > 0) {
+               statusSelect.value = 'Paid';
+           } else if (paid > 0 && paid < grandTotal) {
+               statusSelect.value = 'Partial';
+           }
 
            displaySubtotal.textContent = formatCurrency(subtotal);
            displayGST.textContent = formatCurrency(gst);
            displayGrandTotal.textContent = formatCurrency(grandTotal);
+           displayBalanceDue.textContent = formatCurrency(balance);
        };
 
        function addItemRow(desc='', qty=1, unit=0){
@@ -538,6 +553,10 @@
            document.getElementById('notes').value='';
            document.getElementById('includeGST').checked = true;
            document.getElementById('invoiceStatus').value = 'Unpaid';
+           amountPaidInput.value = '0.00';
+           
+           // Retain Payee Information
+           loadPayeeFromStorage();
            
            itemsBody.innerHTML=''; addItemRow();
            
@@ -575,6 +594,8 @@
          const includeGST = document.getElementById('includeGST').checked;
          const gst = includeGST ? subtotal * 0.10 : 0;
          const total = subtotal + gst;
+         const amountPaid = parseFloat(amountPaidInput.value || 0);
+         const balanceDue = Math.max(0, total - amountPaid);
 
          const invData = {
            clientName: document.getElementById('clientName').value || '',
@@ -599,6 +620,8 @@
            items: items,
            subtotal: subtotal,
            total: total,
+           amountPaid: amountPaid,
+           balanceDue: balanceDue,
            userId: userId,
          };
 
@@ -663,6 +686,7 @@
            document.getElementById('projectUrl').value = inv.projectUrl || '';
            document.getElementById('includeGST').checked = inv.includeGST !== undefined ? inv.includeGST : true;
            document.getElementById('notes').value = inv.notes || '';
+           amountPaidInput.value = inv.amountPaid !== undefined ? inv.amountPaid : 0;
 
            if (inv.logo) {
                logoDataURL = inv.logo;
@@ -706,10 +730,12 @@
            });
 
            let totalAll = 0;
-           let totalUnpaid = 0;
+           let totalUnpaidBalance = 0;
 
            let filteredInvoices = invoices.filter(inv => {
                let currentStatus = inv.status || 'Unpaid';
+               const balance = inv.balanceDue !== undefined ? inv.balanceDue : (inv.total - (inv.amountPaid || 0));
+
                if(currentStatus !== 'Paid' && currentStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
                    currentStatus = 'Overdue';
                }
@@ -720,8 +746,8 @@
 
                if (isCorrectYear) {
                    totalAll += inv.total || 0;
-                   if (currentStatus !== 'Paid' && currentStatus !== 'Cancelled') {
-                       totalUnpaid += inv.total || 0;
+                   if (currentStatus !== 'Cancelled') {
+                       totalUnpaidBalance += balance;
                    }
                }
 
@@ -729,7 +755,7 @@
            });
 
            summaryTotalAll.textContent = formatCurrency(totalAll);
-           summaryTotalUnpaid.textContent = formatCurrency(totalUnpaid);
+           summaryTotalUnpaid.textContent = formatCurrency(totalUnpaidBalance);
            
            invoiceTableBody.innerHTML='';
            
@@ -740,34 +766,36 @@
 
            filteredInvoices.forEach((inv)=>{
                let displayStatus = inv.status || 'Unpaid';
+               const balance = inv.balanceDue !== undefined ? inv.balanceDue : (inv.total - (inv.amountPaid || 0));
+
                if(displayStatus !== 'Paid' && displayStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
                    displayStatus = 'Overdue';
                }
+
+               const trClass = displayStatus === 'Paid' ? 'status-paid' : displayStatus === 'Partial' ? 'status-partial' : displayStatus === 'Overdue' ? 'status-overdue' : 'status-unpaid';
 
                const projectBtnHtml = inv.projectUrl ? 
                    `<a href="${escapeHtml(inv.projectUrl)}" target="_blank" rel="noopener noreferrer" class="bg-purple-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-purple-700 inline-block font-medium">Project</a>` : '';
 
                const tr = document.createElement('tr');
-               tr.className = `border-b border-gray-100 ${displayStatus === 'Paid' ? 'status-paid' : displayStatus === 'Overdue' ? 'status-overdue' : 'status-unpaid'}`;
+               tr.className = `border-b border-gray-100 ${trClass}`;
                tr.innerHTML = `
                  <td class="p-3 font-semibold">${escapeHtml(inv.invoiceNumber)}</td>
                  <td class="p-3">${escapeHtml(inv.clientName)}</td>
                  <td class="p-3 text-gray-600">${escapeHtml(inv.invoiceDate)}</td>
-                 <td class="p-3 text-gray-600">${escapeHtml(inv.dueDate||'')}</td>
+                 <td class="p-3 font-bold text-gray-800">${formatCurrency(balance)} <span class="text-xs font-normal text-gray-500">/ ${formatCurrency(inv.total)}</span></td>
                  <td class="p-3 font-bold">${escapeHtml(displayStatus)}</td>
                  <td class="p-3 space-x-1 whitespace-nowrap">
-                   <button data-id="${inv.id}" class="openBtn bg-indigo-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-indigo-700">Open</button>
+                   <button data-id="${inv.id}" class="pdfBtn bg-teal-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-teal-700 font-medium">PDF ⬇</button>
                    ${projectBtnHtml}
                    <button data-id="${inv.id}" class="editBtn bg-blue-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-700">Edit</button>
-                   <button data-id="${inv.id}" class="payBtn bg-green-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-green-700">Paid</button>
                    <button data-id="${inv.id}" class="delBtn bg-red-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-700">Del</button>
                  </td>`;
                invoiceTableBody.appendChild(tr);
            });
 
-           document.querySelectorAll('.openBtn').forEach(b=>b.addEventListener('click', e=>openInvoice(e.currentTarget.dataset.id)));
+           document.querySelectorAll('.pdfBtn').forEach(b=>b.addEventListener('click', e=>downloadPDF(e.currentTarget.dataset.id)));
            document.querySelectorAll('.editBtn').forEach(b=>b.addEventListener('click', e=>editInvoice(e.currentTarget.dataset.id)));
-           document.querySelectorAll('.payBtn').forEach(b=>b.addEventListener('click', e=>updateInvoiceStatus(e.currentTarget.dataset.id, 'Paid')));
            document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
                if(window.confirm('Are you sure you want to delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
            }));
@@ -775,17 +803,6 @@
          } catch(e) {
            console.error("Error loading documents: ", e);
            invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
-         }
-       }
-
-       async function updateInvoiceStatus(id, newStatus){
-         try {
-           const invoiceRef = doc(db, 'invoices', id);
-           await updateDoc(invoiceRef, { status: newStatus });
-           await loadInvoicesAndRender();
-         } catch(e) {
-           console.error("Error updating document: ", e);
-           alert('Failed to update status.');
          }
        }
 
@@ -800,47 +817,120 @@
          }
        }
 
-       window.openInvoice = function(id){
+       // --- Direct PDF Download Generator ---
+       window.downloadPDF = function(id){
          const inv = invoices.find(i => i.id === id);
          if (!inv) return;
-         
+
          const subtotal = inv.subtotal || inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
          const gst = inv.includeGST ? subtotal * 0.10 : 0;
          const total = inv.total || (subtotal + gst);
+         const paid = inv.amountPaid || 0;
+         const balance = inv.balanceDue !== undefined ? inv.balanceDue : (total - paid);
 
-         const itemsHtml = inv.items.map(it=>`<tr><td>${escapeHtml(it.description)}</td><td style="text-align:right">${it.qty}</td><td style="text-align:right">${formatCurrency(it.unit)}</td><td style="text-align:right">${formatCurrency(it.qty*it.unit)}</td></tr>`).join('');
+         const itemsHtml = inv.items.map(it=>`
+           <tr style="border-bottom: 1px solid #e5e7eb;">
+             <td style="padding: 10px 8px; text-align: left;">${escapeHtml(it.description)}</td>
+             <td style="padding: 10px 8px; text-align: right;">${it.qty}</td>
+             <td style="padding: 10px 8px; text-align: right;">${formatCurrency(it.unit)}</td>
+             <td style="padding: 10px 8px; text-align: right; font-weight: 500;">${formatCurrency(it.qty*it.unit)}</td>
+           </tr>
+         `).join('');
 
-         const projectLinkHtml = inv.projectUrl ? `<p><strong>Project Link:</strong> <a href="${escapeHtml(inv.projectUrl)}" target="_blank">${escapeHtml(inv.projectUrl)}</a></p>` : '';
+         const pdfHtml = `
+           <div style="font-family: Arial, sans-serif; padding: 30px; color: #1f2937; max-width: 800px; background: #fff;">
+             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
+               <div>
+                 ${inv.logo ? `<img src="${escapeHtml(inv.logo)}" style="max-height: 70px; margin-bottom: 12px; display: block;">` : ''}
+                 <h2 style="margin:0; font-size: 20px; font-weight: bold; color: #111827;">${escapeHtml(inv.payeeName||'')}</h2>
+                 <p style="margin:2px 0; font-size: 12px; color: #4b5563;">ABN: ${escapeHtml(inv.payeeABN||'')}</p>
+                 <p style="margin:2px 0; font-size: 12px; color: #4b5563; whitespace: pre-line;">${escapeHtml(inv.payeeAddress||'')}</p>
+                 <p style="margin:2px 0; font-size: 12px; color: #4b5563;">Phone: ${escapeHtml(inv.payeePhone||'')} | Email: ${escapeHtml(inv.payeeEmail||'')}</p>
+               </div>
+               <div style="text-align: right;">
+                 <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #4f46e5; tracking: wide;">TAX INVOICE</h1>
+                 <p style="margin: 6px 0 2px 0; font-size: 13px;"><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}</p>
+                 <p style="margin: 2px 0; font-size: 13px;"><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}</p>
+                 <p style="margin: 2px 0; font-size: 13px;"><strong>Due Date:</strong> ${escapeHtml(inv.dueDate||'N/A')}</p>
+                 <p style="margin: 6px 0 0 0; font-size: 13px;"><strong>Status:</strong> <span style="font-weight: bold; color:${inv.status==='Paid'?'#16a34a':inv.status==='Partial'?'#d97706':'#dc2626'}">${escapeHtml(inv.status)}</span></p>
+               </div>
+             </div>
 
-         const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${escapeHtml(inv.invoiceNumber)}</title><style>body{font-family:Arial;padding:40px} .row{display:flex;justify-content:space-between} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ccc;padding:8px} th{background:#f0f0f0} .msg{background:#f4f4f4;padding:16px;margin-top:20px} .totals{margin-top:20px;text-align:right}</style></head><body>`
-           + `<div class="row"><div>`
-           + (inv.logo?`<img src="${escapeHtml(inv.logo)}" style="max-width:220px;display:block;margin-bottom:10px">`:'')
-           + `<strong>${escapeHtml(inv.payeeName||'')}</strong><br>ABN: ${escapeHtml(inv.payeeABN||'')}<br>${escapeHtml(inv.payeeAddress||'')}<br>Phone: ${escapeHtml(inv.payeePhone||'')}<br>Email: ${escapeHtml(inv.payeeEmail||'')}</div>`
-           + `<div style="text-align:right"><h2>TAX INVOICE</h2><div><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}<br><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br><strong>Status:</strong> <span style="font-weight:bold; color:${inv.status==='Paid'?'green':'red'}">${escapeHtml(inv.status)}</span></div></div></div>`
-           + `<h3>Bill To</h3><div>${escapeHtml(inv.clientName)}<br>${escapeHtml(inv.clientAddress)}<br>${escapeHtml(inv.clientPhone)}<br>${escapeHtml(inv.clientEmail)}</div>`
-           + projectLinkHtml
-           + `<table><thead><tr><th>Description</th><th style="text-align:right">Qty/Hrs</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>`
-           + `<div class="totals"><div>Subtotal: ${formatCurrency(subtotal)}</div>`
-           + (inv.includeGST ? `<div>GST (10%): ${formatCurrency(gst)}</div>` : '')
-           + `<div style="font-weight:bold; font-size:1.2em;">Total: ${formatCurrency(total)}</div></div>`
-           + `<div class="msg"><strong>Notes:</strong> ${escapeHtml(inv.notes)}</div></body></html>`;
+             <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+               <h3 style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: bold;">Bill To:</h3>
+               <p style="margin: 0; font-size: 14px; font-weight: bold; color: #111827;">${escapeHtml(inv.clientName)}</p>
+               <p style="margin: 2px 0; font-size: 12px; color: #4b5563; whitespace: pre-line;">${escapeHtml(inv.clientAddress)}</p>
+               <p style="margin: 2px 0; font-size: 12px; color: #4b5563;">${escapeHtml(inv.clientPhone)} | ${escapeHtml(inv.clientEmail)}</p>
+               ${inv.projectUrl ? `<p style="margin: 6px 0 0 0; font-size: 12px;"><strong>Project:</strong> <a href="${escapeHtml(inv.projectUrl)}" style="color: #4f46e5;">${escapeHtml(inv.projectUrl)}</a></p>` : ''}
+             </div>
 
-         const w = window.open();
-         w.document.write(html);
-         w.document.close();
+             <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
+               <thead>
+                 <tr style="background-color: #f3f4f6; border-bottom: 2px solid #e5e7eb; color: #374151;">
+                   <th style="padding: 10px 8px; text-align: left;">Description</th>
+                   <th style="padding: 10px 8px; text-align: right; width: 60px;">Qty</th>
+                   <th style="padding: 10px 8px; text-align: right; width: 90px;">Unit Price</th>
+                   <th style="padding: 10px 8px; text-align: right; width: 90px;">Total</th>
+                 </tr>
+               </thead>
+               <tbody>${itemsHtml}</tbody>
+             </table>
+
+             <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+               <div style="width: 260px; font-size: 13px;">
+                 <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                   <span style="color: #4b5563;">Subtotal:</span>
+                   <span>${formatCurrency(subtotal)}</span>
+                 </div>
+                 ${inv.includeGST ? `
+                 <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+                   <span style="color: #4b5563;">GST (10%):</span>
+                   <span>${formatCurrency(gst)}</span>
+                 </div>` : ''}
+                 <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #e5e7eb; font-weight: bold;">
+                   <span>Grand Total:</span>
+                   <span>${formatCurrency(total)}</span>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #16a34a;">
+                   <span>Paid to Date:</span>
+                   <span>-${formatCurrency(paid)}</span>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #111827; font-weight: 800; font-size: 15px; color: #dc2626;">
+                   <span>Balance Due:</span>
+                   <span>${formatCurrency(balance)}</span>
+                 </div>
+               </div>
+             </div>
+
+             ${inv.notes ? `
+             <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
+               <h4 style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; color: #6b7280;">Payment Terms & Notes:</h4>
+               <p style="margin: 0; font-size: 12px; color: #4b5563; whitespace: pre-line;">${escapeHtml(inv.notes)}</p>
+             </div>` : ''}
+           </div>
+         `;
+
+         const element = document.createElement('div');
+         element.innerHTML = pdfHtml;
+
+         const opt = {
+           margin:       0.3,
+           filename:     `Invoice_${inv.invoiceNumber}_${inv.clientName.replace(/\s+/g, '_')}.pdf`,
+           image:        { type: 'jpeg', quality: 0.98 },
+           html2canvas:  { scale: 2 },
+           jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+         };
+
+         html2pdf().set(opt).from(element).save();
        };
 
        function populateFinancialYearFilter() {
            const currentYear = new Date().getFullYear();
            const yearOptions = ['All'];
-           
            for(let i = currentYear - 5; i <= currentYear + 1; i++){
                yearOptions.push(`${i}-${i + 1}`);
            }
-
-           filterYear.innerHTML = yearOptions.map(y =>
-               `<option value="${y}" ${y === 'All' ? 'selected' : ''}>${y}</option>`
-           ).join('');
+           filterYear.innerHTML = yearOptions.map(y => `<option value="${y}" ${y === 'All' ? 'selected' : ''}>${y}</option>`).join('');
        }
 
        // --- Authentication Event Bindings ---
