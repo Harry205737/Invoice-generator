@@ -1,1016 +1,3736 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Cloud Invoice Manager</title>
-   <!-- Load Tailwind CSS -->
+
    <script src="https://cdn.tailwindcss.com"></script>
-   <!-- Load html2pdf.js for Client-Side PDF Generation -->
    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
    <style>
        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-       body { font-family: 'Inter', sans-serif; }
+
+       body {
+           font-family: 'Inter', sans-serif;
+       }
+
        input[type="number"]::-webkit-inner-spin-button,
        input[type="number"]::-webkit-outer-spin-button {
            -webkit-appearance: none;
            margin: 0;
        }
-       input[type="number"] { -moz-appearance: textfield; }
-       .status-paid { background-color: #d1fae5; }
-       .status-partial { background-color: #fef3c7; }
-       .status-overdue { background-color: #fee2e2; }
-       .status-unpaid { background-color: #f0f9ff; }
-       .invoice-table th, .invoice-table td { padding: 0.75rem; }
-       
-       .app-screen { display: none; }
-       .app-screen.active { display: block; }
+
+       input[type="number"] {
+           -moz-appearance: textfield;
+       }
+
+       .status-paid {
+           background-color: #d1fae5;
+       }
+
+       .status-partial {
+           background-color: #fef3c7;
+       }
+
+       .status-overdue {
+           background-color: #fee2e2;
+       }
+
+       .status-unpaid {
+           background-color: #f0f9ff;
+       }
+
+       .invoice-table th,
+       .invoice-table td {
+           padding: 0.75rem;
+       }
+
+       .app-screen {
+           display: none;
+       }
+
+       .app-screen.active {
+           display: block;
+       }
    </style>
 </head>
+
 <body class="bg-gray-100 text-gray-800 antialiased pb-24">
 
    <div id="app-main">
-       
+
        <!-- TOP HEADER BAR -->
        <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
            <div class="max-w-6xl mx-auto flex justify-between items-center">
                <div class="flex items-center space-x-3">
-                   <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xl">B</div>
-                   <div>
-                       <h1 class="font-bold text-gray-800 leading-tight">Baw Baw Aerial</h1>
-                       <p class="text-xs text-gray-500" id="user-display-email">Not Signed In</p>
+
+                   <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xl">
+                       B
                    </div>
+
+                   <div>
+                       <h1 class="font-bold text-gray-800 leading-tight">
+                           Baw Baw Aerial
+                       </h1>
+
+                       <p class="text-xs text-gray-500" id="user-display-email">
+                           Not Signed In
+                       </p>
+                   </div>
+
                </div>
+
                <div id="authHeaderActions">
-                   <button id="headerLoginBtn" class="bg-indigo-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-indigo-700 transition">Log In / Sign Up</button>
-                   <button id="logoutBtn" class="hidden text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">Log Out</button>
+
+                   <button
+                       id="headerLoginBtn"
+                       class="bg-indigo-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-indigo-700 transition">
+                       Log In / Sign Up
+                   </button>
+
+                   <button
+                       id="logoutBtn"
+                       class="hidden text-xs text-red-600 font-medium hover:bg-red-50 p-2 rounded-lg border border-red-200 transition">
+                       Log Out
+                   </button>
+
                </div>
            </div>
        </header>
 
+
        <!-- ========================================== -->
        <!-- SCREEN 1: DASHBOARD                        -->
        <!-- ========================================== -->
+
        <section id="screen-dashboard" class="app-screen active max-w-6xl mx-auto p-4 sm:p-6">
+
            <div class="flex justify-between items-center mb-6">
-               <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
-               <button id="dashNewInvBtn" class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
+
+               <h2 class="text-2xl font-bold text-gray-800">
+                   Dashboard
+               </h2>
+
+               <button
+                   id="dashNewInvBtn"
+                   class="bg-indigo-600 text-white font-medium px-4 py-2 rounded-xl text-sm hover:bg-indigo-700 transition flex items-center space-x-2">
+
                    <span>+ New Invoice</span>
+
                </button>
+
            </div>
+
 
            <!-- Summary Cards -->
+
            <div id="invoice-summary" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+
                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                   <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Invoiced Value</p>
-                   <p id="summaryTotalAll" class="text-3xl font-extrabold text-gray-900 mt-2">$0.00</p>
+
+                   <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                       Total Invoiced Value
+                   </p>
+
+                   <p
+                       id="summaryTotalAll"
+                       class="text-3xl font-extrabold text-gray-900 mt-2">
+                       $0.00
+                   </p>
+
                </div>
+
+
                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                   <p class="text-xs font-semibold text-red-500 uppercase tracking-wider">Total Outstanding Balance</p>
-                   <p id="summaryTotalUnpaid" class="text-3xl font-extrabold text-red-600 mt-2">$0.00</p>
+
+                   <p class="text-xs font-semibold text-red-500 uppercase tracking-wider">
+                       Total Outstanding Balance
+                   </p>
+
+                   <p
+                       id="summaryTotalUnpaid"
+                       class="text-3xl font-extrabold text-red-600 mt-2">
+                       $0.00
+                   </p>
+
                </div>
+
            </div>
 
-           <!-- Saved Invoices Module -->
+
+           <!-- Saved Invoices -->
+
            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
                <div class="p-4 border-b border-gray-200 flex flex-wrap gap-3 justify-between items-center bg-gray-50">
-                   <h3 class="font-bold text-gray-700">Recent Invoices</h3>
-                   
+
+                   <h3 class="font-bold text-gray-700">
+                       Recent Invoices
+                   </h3>
+
                    <div class="flex flex-wrap items-center gap-2">
-                       <select id="filterStatus" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
+
+                       <select
+                           id="filterStatus"
+                           class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
+
                            <option value="All">All Statuses</option>
                            <option value="Unpaid">Unpaid</option>
                            <option value="Partial">Partially Paid</option>
                            <option value="Paid">Paid</option>
                            <option value="Overdue">Overdue</option>
                            <option value="Cancelled">Cancelled</option>
+
                        </select>
 
-                       <select id="filterYear" class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"></select>
 
-                       <button id="applyFilterBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">Apply Filter</button>
+                       <select
+                           id="filterYear"
+                           class="p-2 text-sm border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500">
+                       </select>
+
+
+                       <button
+                           id="applyFilterBtn"
+                           class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">
+                           Apply Filter
+                       </button>
+
                    </div>
+
                </div>
 
+
                <div class="overflow-x-auto">
+
                    <table class="invoice-table w-full text-sm">
+
                        <thead>
+
                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b">
+
                                <th class="text-left">#</th>
                                <th class="text-left">Client</th>
                                <th class="text-left">Date</th>
                                <th class="text-left">Balance Due</th>
                                <th class="text-left">Status</th>
                                <th class="text-left">Actions</th>
+
                            </tr>
+
                        </thead>
+
+
                        <tbody id="invoiceTableBody">
-                           <tr><td colspan="6" class="text-center p-4 text-gray-500">Loading invoices...</td></tr>
+
+                           <tr>
+                               <td colspan="6" class="text-center p-4 text-gray-500">
+                                   Loading invoices...
+                               </td>
+                           </tr>
+
                        </tbody>
+
                    </table>
+
                </div>
+
            </div>
+
        </section>
+
 
        <!-- ========================================== -->
        <!-- SCREEN 2: INVOICE EDITOR                   -->
        <!-- ========================================== -->
+
        <section id="screen-invoice-editor" class="app-screen max-w-4xl mx-auto p-4 sm:p-6">
+
            <div id="invoice-form" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+
                <div class="flex justify-between items-center mb-6 pb-4 border-b">
-                   <h2 id="formTitle" class="text-2xl font-bold text-gray-800">Create New Invoice</h2>
-                   <button id="closeFormBtn" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
-               </div>
-               
-               <input type="hidden" id="editInvoiceId" value="">
-               
-               <!-- Payee Details -->
-               <div class="mb-8 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Your Business Details (Payee)</h3>
-                   <div class="flex items-center space-x-4 mb-4">
-                       <img id="logoPreview" class="w-16 h-16 object-contain rounded-xl border bg-white p-1" src="https://placehold.co/80x80/EEEEEE/888888?text=Logo" onerror="this.src='https://placehold.co/80x80/EEEEEE/888888?text=Logo'">
-                       <label class="block">
-                           <span class="sr-only">Choose logo file</span>
-                           <input type="file" id="logoInput" accept="image/*" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                       </label>
-                   </div>
-                   <div class="grid sm:grid-cols-2 gap-3">
-                       <input type="text" id="payeeTradingAs" placeholder="Harry Graafsma trading as:" class="input-field sm:col-span-2 text-sm">
-                       <input type="text" id="payeeName" placeholder="Your Company Name" class="input-field">
-                       <input type="text" id="payeeABN" placeholder="Your ABN/Tax ID" class="input-field">
-                       <textarea id="payeeAddress" placeholder="Your Address" class="input-field sm:col-span-2 h-20"></textarea>
-                       <input type="text" id="payeePhone" placeholder="Your Phone" class="input-field">
-                       <input type="email" id="payeeEmail" placeholder="Your Email" class="input-field">
-                       <input type="text" id="payeeBSB" placeholder="Bank BSB" class="input-field">
-                       <input type="text" id="payeeAccount" placeholder="Bank Account Number" class="input-field">
-                   </div>
+
+                   <h2 id="formTitle" class="text-2xl font-bold text-gray-800">
+                       Create New Invoice
+                   </h2>
+
+                   <button
+                       id="closeFormBtn"
+                       class="text-gray-400 hover:text-gray-600 font-bold text-xl">
+                       &times;
+                   </button>
+
                </div>
 
-               <!-- Invoice Meta -->
-               <div class="mb-8">
-                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Invoice Meta & External Project</h3>
+
+               <input type="hidden" id="editInvoiceId" value="">
+
+
+               <!-- ================================= -->
+               <!-- PAYEE DETAILS                      -->
+               <!-- ================================= -->
+
+               <div class="mb-8 p-4 rounded-xl bg-gray-50 border border-gray-200">
+
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+                       Your Business Details (Payee)
+                   </h3>
+
+
+                   <div class="flex items-center space-x-4 mb-4">
+
+                       <img
+                           id="logoPreview"
+                           class="w-16 h-16 object-contain rounded-xl border bg-white p-1"
+                           src="https://placehold.co/80x80/EEEEEE/888888?text=Logo"
+                           onerror="this.src='https://placehold.co/80x80/EEEEEE/888888?text=Logo'">
+
+                       <label class="block">
+
+                           <span class="sr-only">
+                               Choose logo file
+                           </span>
+
+                           <input
+                               type="file"
+                               id="logoInput"
+                               accept="image/*"
+                               class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+
+                       </label>
+
+                   </div>
+
+
                    <div class="grid sm:grid-cols-2 gap-3">
+
+                       <!-- Trading As -->
+
+                       <input
+                           type="text"
+                           id="payeeTradingAs"
+                           placeholder="Harry Graafsma trading as:"
+                           class="input-field sm:col-span-2 text-sm">
+
+
+                       <!-- Business Name -->
+
+                       <input
+                           type="text"
+                           id="payeeName"
+                           placeholder="Your Company Name"
+                           class="input-field">
+
+
+                       <!-- ABN -->
+
+                       <input
+                           type="text"
+                           id="payeeABN"
+                           placeholder="Your ABN/Tax ID"
+                           class="input-field">
+
+
+                       <!-- Address -->
+
+                       <textarea
+                           id="payeeAddress"
+                           placeholder="Your Address"
+                           class="input-field sm:col-span-2 h-20"></textarea>
+
+
+                       <!-- Phone -->
+
+                       <input
+                           type="text"
+                           id="payeePhone"
+                           placeholder="Your Phone"
+                           class="input-field">
+
+
+                       <!-- Email -->
+
+                       <input
+                           type="email"
+                           id="payeeEmail"
+                           placeholder="Your Email"
+                           class="input-field">
+
+
+                       <!-- BANK BSB -->
+
+                       <input
+                           type="text"
+                           id="payeeBSB"
+                           placeholder="Bank BSB"
+                           class="input-field">
+
+
+                       <!-- ACCOUNT NAME - NEW -->
+
+                       <input
+                           type="text"
+                           id="payeeAccountName"
+                           placeholder="Account Name"
+                           class="input-field">
+
+
+                       <!-- ACCOUNT NUMBER -->
+
+                       <input
+                           type="text"
+                           id="payeeAccount"
+                           placeholder="Bank Account Number"
+                           class="input-field">
+
+                   </div>
+
+               </div>
+
+
+               <!-- ================================= -->
+               <!-- INVOICE META                       -->
+               <!-- ================================= -->
+
+               <div class="mb-8">
+
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+                       Invoice Meta & External Project
+                   </h3>
+
+
+                   <div class="grid sm:grid-cols-2 gap-3">
+
                        <div>
-                           <label class="block text-xs font-semibold text-gray-500 mb-1">Invoice Number</label>
-                           <input type="text" id="invoiceNumber" placeholder="Invoice #" class="input-field">
+
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">
+                               Invoice Number
+                           </label>
+
+                           <input
+                               type="text"
+                               id="invoiceNumber"
+                               placeholder="Invoice #"
+                               class="input-field">
+
                        </div>
+
+
                        <div>
-                           <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                           <select id="invoiceStatus" class="input-field">
+
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">
+                               Status
+                           </label>
+
+                           <select
+                               id="invoiceStatus"
+                               class="input-field">
+
                                <option value="Unpaid">Unpaid</option>
                                <option value="Partial">Partially Paid</option>
                                <option value="Paid">Paid</option>
                                <option value="Cancelled">Cancelled</option>
+
                            </select>
+
                        </div>
+
+
                        <div>
-                           <label class="block text-xs font-semibold text-gray-500 mb-1">Invoice Date</label>
-                           <input type="date" id="invoiceDate" class="input-field">
+
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">
+                               Invoice Date
+                           </label>
+
+                           <input
+                               type="date"
+                               id="invoiceDate"
+                               class="input-field">
+
                        </div>
+
+
                        <div>
-                           <label class="block text-xs font-semibold text-gray-500 mb-1">Due Date</label>
-                           <input type="date" id="dueDate" class="input-field">
+
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">
+                               Due Date
+                           </label>
+
+                           <input
+                               type="date"
+                               id="dueDate"
+                               class="input-field">
+
                        </div>
+
+
                        <div class="sm:col-span-2">
-                           <label class="block text-xs font-semibold text-gray-500 mb-1">Project / External Link (URL)</label>
-                           <input type="url" id="projectUrl" placeholder="https://example.com/project-folder" class="input-field">
+
+                           <label class="block text-xs font-semibold text-gray-500 mb-1">
+                               Project / External Link (URL)
+                           </label>
+
+                           <input
+                               type="url"
+                               id="projectUrl"
+                               placeholder="https://example.com/project-folder"
+                               class="input-field">
+
                        </div>
+
                    </div>
+
                </div>
 
-               <!-- Client Details -->
+
+               <!-- ================================= -->
+               <!-- CLIENT DETAILS                     -->
+               <!-- ================================= -->
+
                <div class="mb-8">
-                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Client Details (Bill To)</h3>
+
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+                       Client Details (Bill To)
+                   </h3>
+
+
                    <div class="grid sm:grid-cols-2 gap-3">
-                       <input type="text" id="clientName" placeholder="Client Name" class="input-field sm:col-span-2">
-                       <textarea id="clientAddress" placeholder="Client Address" class="input-field sm:col-span-2 h-20"></textarea>
-                       <input type="text" id="clientPhone" placeholder="Client Phone" class="input-field">
-                       <input type="email" id="clientEmail" placeholder="Client Email" class="input-field">
+
+                       <input
+                           type="text"
+                           id="clientName"
+                           placeholder="Client Name"
+                           class="input-field sm:col-span-2">
+
+
+                       <textarea
+                           id="clientAddress"
+                           placeholder="Client Address"
+                           class="input-field sm:col-span-2 h-20"></textarea>
+
+
+                       <input
+                           type="text"
+                           id="clientPhone"
+                           placeholder="Client Phone"
+                           class="input-field">
+
+
+                       <input
+                           type="email"
+                           id="clientEmail"
+                           placeholder="Client Email"
+                           class="input-field">
+
                    </div>
-               </div>
-               
-               <!-- Items Table -->
-               <div class="mb-8">
-                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Line Items</h3>
-                   <div class="overflow-x-auto border rounded-xl mb-3">
-                       <table class="w-full text-sm">
-                           <thead>
-                               <tr class="bg-gray-50 border-b text-gray-600 text-xs">
-                                   <th class="p-3 text-left">Description</th>
-                                   <th class="p-3 text-right w-20">Qty</th>
-                                   <th class="p-3 text-right w-28">Unit Price</th>
-                                   <th class="p-3 text-right w-28">Total</th>
-                                   <th class="p-3 w-10"></th>
-                               </tr>
-                           </thead>
-                           <tbody id="itemsBody"></tbody>
-                       </table>
-                   </div>
-                   <button id="addItemBtn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-600 p-2.5 rounded-xl font-medium hover:bg-indigo-100 transition text-sm">+ Add Line Item</button>
+
                </div>
 
-               <!-- Totals & Payments -->
-               <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                   <div class="flex justify-between font-medium text-gray-600 text-sm">
-                       <span>Subtotal:</span>
-                       <span id="displaySubtotal">$0.00</span>
-                   </div>
-                   <div class="flex justify-between font-medium text-gray-600 text-sm border-b pb-2">
-                       <label class="flex items-center space-x-2">
-                           <input type="checkbox" id="includeGST" checked class="rounded text-indigo-600 focus:ring-indigo-500">
-                           <span>Include GST (10%)</span>
-                       </label>
-                       <span id="displayGST">$0.00</span>
-                   </div>
-                   <div class="flex justify-between font-bold text-base text-gray-800">
-                       <span>Grand Total:</span>
-                       <span id="displayGrandTotal">$0.00</span>
-                   </div>
-                   
-                   <!-- Partial Payments Inputs -->
-                   <div class="pt-2 border-t border-gray-200 grid sm:grid-cols-2 gap-3 items-center">
-                       <div>
-                           <label class="block text-xs font-semibold text-gray-600">Amount Paid So Far ($)</label>
-                           <input type="number" id="amountPaid" min="0" step="0.01" value="0.00" class="input-field mt-1" oninput="updateGrandTotal()">
-                       </div>
-                       <div class="text-right sm:self-end pb-1">
-                           <span class="block text-xs font-semibold text-gray-500 uppercase">Remaining Balance Due</span>
-                           <span id="displayBalanceDue" class="text-xl font-black text-red-600">$0.00</span>
-                       </div>
-                   </div>
-               </div>
-               
+
+               <!-- ================================= -->
+               <!-- LINE ITEMS                         -->
+               <!-- ================================= -->
+
                <div class="mb-8">
-                   <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Notes & Terms</label>
-                   <textarea id="notes" placeholder="Payment Terms, Disclaimers, Bank details notes..." class="input-field h-24"></textarea>
+
+                   <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+                       Line Items
+                   </h3>
+
+
+                   <div class="overflow-x-auto border rounded-xl mb-3">
+
+                       <table class="w-full text-sm">
+
+                           <thead>
+
+                               <tr class="bg-gray-50 border-b text-gray-600 text-xs">
+
+                                   <th class="p-3 text-left">
+                                       Description
+                                   </th>
+
+                                   <th class="p-3 text-right w-20">
+                                       Qty
+                                   </th>
+
+                                   <th class="p-3 text-right w-28">
+                                       Unit Price
+                                   </th>
+
+                                   <th class="p-3 text-right w-28">
+                                       Total
+                                   </th>
+
+                                   <th class="p-3 w-10"></th>
+
+                               </tr>
+
+                           </thead>
+
+                           <tbody id="itemsBody"></tbody>
+
+                       </table>
+
+                   </div>
+
+
+                   <button
+                       id="addItemBtn"
+                       class="w-full bg-indigo-50 border border-indigo-200 text-indigo-600 p-2.5 rounded-xl font-medium hover:bg-indigo-100 transition text-sm">
+                       + Add Line Item
+                   </button>
+
                </div>
+
+
+               <!-- ================================= -->
+               <!-- TOTALS & PAYMENTS                  -->
+               <!-- ================================= -->
+
+               <div class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+
+                   <div class="flex justify-between font-medium text-gray-600 text-sm">
+
+                       <span>Subtotal:</span>
+
+                       <span id="displaySubtotal">
+                           $0.00
+                       </span>
+
+                   </div>
+
+
+                   <div class="flex justify-between font-medium text-gray-600 text-sm border-b pb-2">
+
+                       <label class="flex items-center space-x-2">
+
+                           <input
+                               type="checkbox"
+                               id="includeGST"
+                               checked
+                               class="rounded text-indigo-600 focus:ring-indigo-500">
+
+                           <span>
+                               Include GST (10%)
+                           </span>
+
+                       </label>
+
+
+                       <span id="displayGST">
+                           $0.00
+                       </span>
+
+                   </div>
+
+
+                   <div class="flex justify-between font-bold text-base text-gray-800">
+
+                       <span>
+                           Grand Total:
+                       </span>
+
+                       <span id="displayGrandTotal">
+                           $0.00
+                       </span>
+
+                   </div>
+
+
+                   <div class="pt-2 border-t border-gray-200 grid sm:grid-cols-2 gap-3 items-center">
+
+                       <div>
+
+                           <label class="block text-xs font-semibold text-gray-600">
+                               Amount Paid So Far ($)
+                           </label>
+
+                           <input
+                               type="number"
+                               id="amountPaid"
+                               min="0"
+                               step="0.01"
+                               value="0.00"
+                               class="input-field mt-1"
+                               oninput="updateGrandTotal()">
+
+                       </div>
+
+
+                       <div class="text-right sm:self-end pb-1">
+
+                           <span class="block text-xs font-semibold text-gray-500 uppercase">
+                               Remaining Balance Due
+                           </span>
+
+                           <span
+                               id="displayBalanceDue"
+                               class="text-xl font-black text-red-600">
+                               $0.00
+                           </span>
+
+                       </div>
+
+                   </div>
+
+               </div>
+
+
+               <!-- NOTES -->
+
+               <div class="mb-8">
+
+                   <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                       Notes & Terms
+                   </label>
+
+                   <textarea
+                       id="notes"
+                       placeholder="Payment Terms, Disclaimers, Bank details notes..."
+                       class="input-field h-24"></textarea>
+
+               </div>
+
+
+               <!-- SAVE -->
 
                <div class="flex space-x-3">
-                   <button id="saveInvoiceBtn" class="flex-grow bg-green-600 text-white p-3.5 rounded-xl font-semibold hover:bg-green-700 transition shadow-lg shadow-green-100">💾 Save Invoice to Cloud</button>
-                   <button id="cancelEditBtn" class="bg-gray-200 text-gray-700 p-3.5 rounded-xl font-semibold hover:bg-gray-300 transition" style="display:none;">Cancel</button>
+
+                   <button
+                       id="saveInvoiceBtn"
+                       class="flex-grow bg-green-600 text-white p-3.5 rounded-xl font-semibold hover:bg-green-700 transition shadow-lg shadow-green-100">
+                       💾 Save Invoice to Cloud
+                   </button>
+
+                   <button
+                       id="cancelEditBtn"
+                       class="bg-gray-200 text-gray-700 p-3.5 rounded-xl font-semibold hover:bg-gray-300 transition"
+                       style="display:none;">
+                       Cancel
+                   </button>
+
                </div>
 
            </div>
+
        </section>
+
 
        <!-- ========================================== -->
        <!-- SCREEN 3: SETTINGS                         -->
        <!-- ========================================== -->
+
        <section id="screen-settings" class="app-screen max-w-2xl mx-auto p-4 sm:p-6">
+
            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-               <h2 class="text-2xl font-bold text-gray-800 mb-4">App Settings</h2>
-               <p class="text-sm text-gray-500 mb-6">Manage local defaults and global configurations.</p>
-               
+
+               <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                   App Settings
+               </h2>
+
+               <p class="text-sm text-gray-500 mb-6">
+                   Manage local defaults and global configurations.
+               </p>
+
+
                <div class="space-y-4">
+
                    <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                       <p class="text-xs text-indigo-600 font-semibold uppercase">Cloud Connection</p>
-                       <p id="settingsAuthStatus" class="text-sm font-medium text-indigo-900 mt-1">Status: Active (Firebase Firestore)</p>
+
+                       <p class="text-xs text-indigo-600 font-semibold uppercase">
+                           Cloud Connection
+                       </p>
+
+                       <p
+                           id="settingsAuthStatus"
+                           class="text-sm font-medium text-indigo-900 mt-1">
+                           Status: Active (Firebase Firestore)
+                       </p>
+
                    </div>
-                   <button id="settingsLogoutBtn" class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">Log Out of Account</button>
+
+
+                   <button
+                       id="settingsLogoutBtn"
+                       class="w-full bg-red-600 text-white font-medium p-3 rounded-xl hover:bg-red-700 transition">
+                       Log Out of Account
+                   </button>
+
                </div>
+
            </div>
+
        </section>
+
 
        <!-- ========================================== -->
        <!-- FLOATING TASK BAR                          -->
        <!-- ========================================== -->
+
        <div class="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+
            <nav class="bg-white/90 backdrop-blur-md border border-gray-200 shadow-2xl rounded-full p-2 flex items-center space-x-2 pointer-events-auto">
-               <button id="nav-dashboard" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold transition bg-indigo-600 text-white shadow-md">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+
+               <button
+                   id="nav-dashboard"
+                   class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold transition bg-indigo-600 text-white shadow-md">
+
                    <span>Dashboard</span>
-               </button>
-               
-               <button id="nav-invoice-editor" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                   <span>New Invoice</span>
+
                </button>
 
-               <button id="nav-settings" class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
-                   <span>Settings</span>
+
+               <button
+                   id="nav-invoice-editor"
+                   class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+
+                   <span>+ New Invoice</span>
+
                </button>
+
+
+               <button
+                   id="nav-settings"
+                   class="nav-btn flex items-center space-x-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 hover:text-indigo-600 hover:bg-gray-100 transition">
+
+                   <span>Settings</span>
+
+               </button>
+
            </nav>
+
        </div>
 
    </div>
 
+
    <!-- ========================================== -->
-   <!-- AUTHENTICATION MODAL POPUP                 -->
+   <!-- AUTHENTICATION MODAL                      -->
    <!-- ========================================== -->
-   <div id="authModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+
+   <div
+       id="authModal"
+       class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+
        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative">
-           <button id="closeAuthModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
-           
+
+           <button
+               id="closeAuthModalBtn"
+               class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-xl">
+               &times;
+           </button>
+
+
            <div class="text-center mb-6">
-               <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 mb-3">
-                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-               </div>
-               <h2 class="text-xl font-bold text-gray-900">Account Login</h2>
-               <p class="text-xs text-gray-500 mt-1">Sign in to sync your invoices to the cloud</p>
+
+               <h2 class="text-xl font-bold text-gray-900">
+                   Account Login
+               </h2>
+
+               <p class="text-xs text-gray-500 mt-1">
+                   Sign in to sync your invoices to the cloud
+               </p>
+
            </div>
+
 
            <div class="space-y-4">
+
                <div>
-                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Email Address</label>
-                   <input type="email" id="loginEmail" placeholder="your@email.com" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                       Email Address
+                   </label>
+
+                   <input
+                       type="email"
+                       id="loginEmail"
+                       placeholder="your@email.com"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
                </div>
+
+
                <div>
-                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Password</label>
-                   <input type="password" id="loginPassword" placeholder="••••••••" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
+                   <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                       Password
+                   </label>
+
+                   <input
+                       type="password"
+                       id="loginPassword"
+                       placeholder="••••••••"
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
                </div>
-               
+
+
                <div class="pt-2 space-y-2">
-                   <button id="loginBtn" class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 text-sm">Log In</button>
-                   <button id="signUpBtn" class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition text-sm">Create Account</button>
+
+                   <button
+                       id="loginBtn"
+                       class="w-full bg-indigo-600 text-white font-semibold p-3 rounded-xl hover:bg-indigo-700 transition text-sm">
+                       Log In
+                   </button>
+
+
+                   <button
+                       id="signUpBtn"
+                       class="w-full bg-gray-100 text-gray-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition text-sm">
+                       Create Account
+                   </button>
+
                </div>
+
            </div>
+
        </div>
+
    </div>
 
-   <!-- HIDDEN CONTAINER FOR PDF RENDERING -->
-   <div id="pdfRenderContainer" style="display:none;"></div>
+
+   <!-- PDF RENDER CONTAINER -->
+
+   <div
+       id="pdfRenderContainer"
+       style="display:none;">
+   </div>
+
 
    <style>
+
        .input-field {
-           @apply w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-sm outline-none;
+           width: 100%;
+           padding: 0.625rem;
+           border: 1px solid #d1d5db;
+           border-radius: 0.75rem;
+           outline: none;
+           font-size: 0.875rem;
+           transition: all 0.2s;
        }
+
+       .input-field:focus {
+           border-color: #6366f1;
+           box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+       }
+
    </style>
 
+
+   <!-- ========================================== -->
+   <!-- JAVASCRIPT                                 -->
+   <!-- ========================================== -->
+
    <script type="module">
+
        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+
        import {
-         getAuth,
-         createUserWithEmailAndPassword,
-         signInWithEmailAndPassword,
-         signOut,
-         onAuthStateChanged
+           getAuth,
+           createUserWithEmailAndPassword,
+           signInWithEmailAndPassword,
+           signOut,
+           onAuthStateChanged
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
        import {
-         getFirestore,
-         collection,
-         query,
-         where,
-         getDocs,
-         addDoc,
-         updateDoc,
-         deleteDoc,
-         serverTimestamp,
-         doc
+           getFirestore,
+           collection,
+           query,
+           where,
+           getDocs,
+           addDoc,
+           updateDoc,
+           deleteDoc,
+           serverTimestamp,
+           doc
        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
+
        const firebaseConfig = {
-         apiKey: "AIzaSyDFk7MaEfHd7ApFYS7TztSFphtspT4-axo",
-         authDomain: "invoicemanager-b0604.firebaseapp.com",
-         projectId: "invoicemanager-b0604",
-         storageBucket: "invoicemanager-b0604.firebasestorage.app",
-         messagingSenderId: "47773331214",
-         appId: "1:47773331214:web:6d9066b2e6b1f29cb3715f",
-         measurementId: "G-0GWKMR09EN"
+
+           apiKey: "AIzaSyDFk7MaEfHd7ApFYS7TztSFphtspT4-axo",
+           authDomain: "invoicemanager-b0604.firebaseapp.com",
+           projectId: "invoicemanager-b0604",
+           storageBucket: "invoicemanager-b0604.firebasestorage.app",
+           messagingSenderId: "47773331214",
+           appId: "1:47773331214:web:6d9066b2e6b1f29cb3715f",
+           measurementId: "G-0GWKMR09EN"
+
        };
-       
+
+
        const app = initializeApp(firebaseConfig);
        const auth = getAuth(app);
        const db = getFirestore(app);
+
+
        let userId = null;
        let invoices = [];
+
 
        const itemsBody = document.getElementById('itemsBody');
        const logoPreview = document.getElementById('logoPreview');
        const invoiceTableBody = document.getElementById('invoiceTableBody');
+
        const loginEmailInput = document.getElementById('loginEmail');
        const loginPasswordInput = document.getElementById('loginPassword');
+
        const userDisplayEmail = document.getElementById('user-display-email');
+
        const authModal = document.getElementById('authModal');
+
        const headerLoginBtn = document.getElementById('headerLoginBtn');
        const logoutBtn = document.getElementById('logoutBtn');
        const settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
-       
+
        const displaySubtotal = document.getElementById('displaySubtotal');
        const displayGST = document.getElementById('displayGST');
        const displayGrandTotal = document.getElementById('displayGrandTotal');
        const displayBalanceDue = document.getElementById('displayBalanceDue');
+
        const amountPaidInput = document.getElementById('amountPaid');
-       
+
        const filterYear = document.getElementById('filterYear');
        const filterStatus = document.getElementById('filterStatus');
+
        const saveInvoiceBtn = document.getElementById('saveInvoiceBtn');
        const cancelEditBtn = document.getElementById('cancelEditBtn');
+
        const formTitle = document.getElementById('formTitle');
        const editInvoiceIdInput = document.getElementById('editInvoiceId');
 
        const summaryTotalAll = document.getElementById('summaryTotalAll');
        const summaryTotalUnpaid = document.getElementById('summaryTotalUnpaid');
 
-       // Modal controls
-       function openAuthModal() { authModal.classList.remove('hidden'); }
-       function closeAuthModal() { authModal.classList.add('hidden'); }
+
+       /* ==========================================
+          AUTH MODAL
+       ========================================== */
+
+       function openAuthModal() {
+           authModal.classList.remove('hidden');
+       }
+
+
+       function closeAuthModal() {
+           authModal.classList.add('hidden');
+       }
+
 
        headerLoginBtn.addEventListener('click', openAuthModal);
-       document.getElementById('closeAuthModalBtn').addEventListener('click', closeAuthModal);
-       authModal.addEventListener('click', (e) => { if (e.target === authModal) closeAuthModal(); });
 
-       // --- Screen Switcher ---
-       window.switchScreen = function(screenName) {
-           document.querySelectorAll('.app-screen').forEach(screen => screen.classList.remove('active'));
-           document.querySelectorAll('.nav-btn').forEach(btn => {
-               btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
-               btn.classList.add('text-gray-600');
-           });
+       document
+           .getElementById('closeAuthModalBtn')
+           .addEventListener('click', closeAuthModal);
 
-           const targetScreen = document.getElementById(`screen-${screenName}`);
-           if (targetScreen) targetScreen.classList.add('active');
 
-           const targetBtn = document.getElementById(`nav-${screenName}`);
-           if (targetBtn) {
-               targetBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-               targetBtn.classList.remove('text-gray-600');
+       authModal.addEventListener('click', (e) => {
+
+           if (e.target === authModal) {
+               closeAuthModal();
            }
+
+       });
+
+
+       /* ==========================================
+          SCREEN SWITCHER
+       ========================================== */
+
+       window.switchScreen = function(screenName) {
+
+           document
+               .querySelectorAll('.app-screen')
+               .forEach(screen => screen.classList.remove('active'));
+
+
+           document
+               .querySelectorAll('.nav-btn')
+               .forEach(btn => {
+
+                   btn.classList.remove(
+                       'bg-indigo-600',
+                       'text-white',
+                       'shadow-md'
+                   );
+
+                   btn.classList.add('text-gray-600');
+
+               });
+
+
+           const targetScreen =
+               document.getElementById(`screen-${screenName}`);
+
+
+           if (targetScreen) {
+               targetScreen.classList.add('active');
+           }
+
+
+           const targetBtn =
+               document.getElementById(`nav-${screenName}`);
+
+
+           if (targetBtn) {
+
+               targetBtn.classList.add(
+                   'bg-indigo-600',
+                   'text-white',
+                   'shadow-md'
+               );
+
+               targetBtn.classList.remove('text-gray-600');
+
+           }
+
+
            window.scrollTo(0, 0);
+
        };
 
-       let logoDataURL = localStorage.getItem('invoiceLogo')||'';
-       
-       const today = new Date().toISOString().split('T')[0];
+
+       /* ==========================================
+          LOCAL STORAGE
+       ========================================== */
+
+       let logoDataURL =
+           localStorage.getItem('invoiceLogo') || '';
+
+
+       const today =
+           new Date().toISOString().split('T')[0];
+
+
        const dueDateDefault = new Date();
-       dueDateDefault.setDate(dueDateDefault.getDate() + 14);
-       const dueDateValue = dueDateDefault.toISOString().split('T')[0];
-       
-       function formatCurrency(n){ return '$' + Number(n||0).toFixed(2); }
-       function escapeHtml(str){ if(!str) return ''; return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
-       function generateInvoiceNumber(){ let last = parseInt(localStorage.getItem('lastInvoiceNumber')||'1000',10); last++; localStorage.setItem('lastInvoiceNumber',String(last)); return String(last); }
+
+       dueDateDefault.setDate(
+           dueDateDefault.getDate() + 14
+       );
+
+
+       const dueDateValue =
+           dueDateDefault.toISOString().split('T')[0];
+
+
+       function formatCurrency(n) {
+
+           return '$' + Number(n || 0).toFixed(2);
+
+       }
+
+
+       function escapeHtml(str) {
+
+           if (!str) return '';
+
+           return String(str)
+               .replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;')
+               .replace(/'/g, '&#039;');
+
+       }
+
+
+       function generateInvoiceNumber() {
+
+           let last =
+               parseInt(
+                   localStorage.getItem('lastInvoiceNumber') || '1000',
+                   10
+               );
+
+           last++;
+
+           localStorage.setItem(
+               'lastInvoiceNumber',
+               String(last)
+           );
+
+           return String(last);
+
+       }
+
 
        function getFinancialYear(dateString) {
+
            if (!dateString) return 'N/A';
+
            const parts = dateString.split('-');
+
            if (parts.length < 3) return 'N/A';
+
            const year = parseInt(parts[0], 10);
            const month = parseInt(parts[1], 10);
-           return month >= 7 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-       }
-       
-       function savePayeeToStorage(){
-         ['payeeTradingAs','payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
-           localStorage.setItem(id, document.getElementById(id).value);
-         });
-       }
-       
-       // Pre-populates business information from localStorage
-       function loadPayeeFromStorage(){
-         ['payeeTradingAs','payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
-           const el = document.getElementById(id);
-           if (localStorage.getItem(id)) {
-             el.value = localStorage.getItem(id);
-           }
-           el.addEventListener('input', savePayeeToStorage);
-         });
+
+           return month >= 7
+               ? `${year}-${year + 1}`
+               : `${year - 1}-${year}`;
+
        }
 
-       document.getElementById('logoInput').addEventListener('change', e=>{
-         const f = e.target.files && e.target.files[0];
-         if(!f) return;
-         const r = new FileReader();
-         r.onload = ev => {
-           logoDataURL = ev.target.result;
-           logoPreview.src = logoDataURL;
-           localStorage.setItem('invoiceLogo', logoDataURL);
-         };
-         r.readAsDataURL(f);
-       });
+
+       /* ==========================================
+          PAYEE STORAGE
+       ========================================== */
+
+       function savePayeeToStorage() {
+
+           [
+               'payeeTradingAs',
+               'payeeName',
+               'payeeABN',
+               'payeeAddress',
+               'payeePhone',
+               'payeeEmail',
+               'payeeBSB',
+               'payeeAccountName',
+               'payeeAccount'
+           ].forEach(id => {
+
+               const element =
+                   document.getElementById(id);
+
+               localStorage.setItem(
+                   id,
+                   element.value
+               );
+
+           });
+
+       }
+
+
+       function loadPayeeFromStorage() {
+
+           [
+               'payeeTradingAs',
+               'payeeName',
+               'payeeABN',
+               'payeeAddress',
+               'payeePhone',
+               'payeeEmail',
+               'payeeBSB',
+               'payeeAccountName',
+               'payeeAccount'
+           ].forEach(id => {
+
+               const element =
+                   document.getElementById(id);
+
+
+               const saved =
+                   localStorage.getItem(id);
+
+
+               if (saved !== null) {
+                   element.value = saved;
+               }
+
+
+               element.addEventListener(
+                   'input',
+                   savePayeeToStorage
+               );
+
+           });
+
+       }
+
+
+       /* ==========================================
+          LOGO
+       ========================================== */
+
+       document
+           .getElementById('logoInput')
+           .addEventListener('change', e => {
+
+               const f =
+                   e.target.files &&
+                   e.target.files[0];
+
+
+               if (!f) return;
+
+
+               const r =
+                   new FileReader();
+
+
+               r.onload = ev => {
+
+                   logoDataURL =
+                       ev.target.result;
+
+
+                   logoPreview.src =
+                       logoDataURL;
+
+
+                   localStorage.setItem(
+                       'invoiceLogo',
+                       logoDataURL
+                   );
+
+               };
+
+
+               r.readAsDataURL(f);
+
+           });
+
+
+       /* ==========================================
+          CALCULATIONS
+       ========================================== */
 
        function calculateCurrentItemsTotal() {
+
            let currentSubtotal = 0;
-           Array.from(itemsBody.querySelectorAll('tr')).forEach(r => {
-               const qtyInput = r.querySelector('.it-qty');
-               const unitInput = r.querySelector('.it-unit');
-               const q = parseFloat(qtyInput.value || 0);
-               const u = parseFloat(unitInput.value || 0);
+
+
+           Array.from(
+               itemsBody.querySelectorAll('tr')
+           ).forEach(r => {
+
+               const qtyInput =
+                   r.querySelector('.it-qty');
+
+               const unitInput =
+                   r.querySelector('.it-unit');
+
+
+               const q =
+                   parseFloat(qtyInput.value || 0);
+
+
+               const u =
+                   parseFloat(unitInput.value || 0);
+
+
                currentSubtotal += q * u;
+
            });
+
+
            return currentSubtotal;
+
        }
+
 
        window.updateGrandTotal = function() {
-           const subtotal = calculateCurrentItemsTotal();
-           const includeGST = document.getElementById('includeGST').checked;
-           const gst = includeGST ? subtotal * 0.10 : 0;
-           const grandTotal = subtotal + gst;
-           
-           const paid = parseFloat(amountPaidInput.value || 0);
-           const balance = Math.max(0, grandTotal - paid);
 
-           // Auto-update status based on balance
-           const statusSelect = document.getElementById('invoiceStatus');
-           if (paid >= grandTotal && grandTotal > 0) {
+           const subtotal =
+               calculateCurrentItemsTotal();
+
+
+           const includeGST =
+               document.getElementById('includeGST').checked;
+
+
+           const gst =
+               includeGST
+                   ? subtotal * 0.10
+                   : 0;
+
+
+           const grandTotal =
+               subtotal + gst;
+
+
+           const paid =
+               parseFloat(
+                   amountPaidInput.value || 0
+               );
+
+
+           const balance =
+               Math.max(
+                   0,
+                   grandTotal - paid
+               );
+
+
+           const statusSelect =
+               document.getElementById('invoiceStatus');
+
+
+           if (
+               paid >= grandTotal &&
+               grandTotal > 0
+           ) {
+
                statusSelect.value = 'Paid';
-           } else if (paid > 0 && paid < grandTotal) {
+
+           } else if (
+               paid > 0 &&
+               paid < grandTotal
+           ) {
+
                statusSelect.value = 'Partial';
+
            }
 
-           displaySubtotal.textContent = formatCurrency(subtotal);
-           displayGST.textContent = formatCurrency(gst);
-           displayGrandTotal.textContent = formatCurrency(grandTotal);
-           displayBalanceDue.textContent = formatCurrency(balance);
+
+           displaySubtotal.textContent =
+               formatCurrency(subtotal);
+
+
+           displayGST.textContent =
+               formatCurrency(gst);
+
+
+           displayGrandTotal.textContent =
+               formatCurrency(grandTotal);
+
+
+           displayBalanceDue.textContent =
+               formatCurrency(balance);
+
        };
 
-       function addItemRow(desc='', qty=1, unit=0){
-         const tr = document.createElement('tr');
-         tr.className = "border-b border-gray-100";
-         tr.innerHTML = `
-           <td class="p-2"><input class="it-desc input-field" value="${escapeHtml(desc)}" placeholder="Item Description" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="p-2"><input class="it-qty input-field text-right" type="number" min="0" value="${qty}" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="p-2"><input class="it-unit input-field text-right" type="number" min="0" step="0.01" value="${unit}" oninput="updateTotalRow(this.closest('tr'))"></td>
-           <td class="it-total p-2 text-right font-medium text-gray-700">${formatCurrency(qty*unit)}</td>
-           <td class="p-2 text-center"><button type="button" class="remove text-red-500 hover:text-red-700 font-bold p-1">✕</button></td>`;
-         itemsBody.appendChild(tr);
 
-         tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); updateGrandTotal(); });
-         tr.querySelectorAll('input').forEach(input => input.addEventListener('input', updateGrandTotal));
+       /* ==========================================
+          LINE ITEMS
+       ========================================== */
 
-         updateGrandTotal();
+       function addItemRow(
+           desc = '',
+           qty = 1,
+           unit = 0
+       ) {
+
+           const tr =
+               document.createElement('tr');
+
+
+           tr.className =
+               "border-b border-gray-100";
+
+
+           tr.innerHTML = `
+
+               <td class="p-2">
+
+                   <input
+                       class="it-desc input-field"
+                       value="${escapeHtml(desc)}"
+                       placeholder="Item Description">
+
+               </td>
+
+
+               <td class="p-2">
+
+                   <input
+                       class="it-qty input-field text-right"
+                       type="number"
+                       min="0"
+                       value="${qty}">
+
+               </td>
+
+
+               <td class="p-2">
+
+                   <input
+                       class="it-unit input-field text-right"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       value="${unit}">
+
+               </td>
+
+
+               <td class="it-total p-2 text-right font-medium text-gray-700">
+                   ${formatCurrency(qty * unit)}
+               </td>
+
+
+               <td class="p-2 text-center">
+
+                   <button
+                       type="button"
+                       class="remove text-red-500 hover:text-red-700 font-bold p-1">
+                       ✕
+                   </button>
+
+               </td>
+
+           `;
+
+
+           itemsBody.appendChild(tr);
+
+
+           tr
+               .querySelector('.remove')
+               .addEventListener(
+                   'click',
+                   () => {
+
+                       tr.remove();
+
+                       updateGrandTotal();
+
+                   }
+               );
+
+
+           tr
+               .querySelectorAll('input')
+               .forEach(input => {
+
+                   input.addEventListener(
+                       'input',
+                       () => updateTotalRow(tr)
+                   );
+
+               });
+
+
+           updateGrandTotal();
+
        }
+
 
        window.updateTotalRow = function(tr) {
-           const qtyInput = tr.querySelector('.it-qty');
-           const unitInput = tr.querySelector('.it-unit');
-           const q = parseFloat(qtyInput.value || 0);
-           const u = parseFloat(unitInput.value || 0);
-           tr.querySelector('.it-total').textContent = formatCurrency(q * u);
-           updateGrandTotal();
-       };
 
-       document.getElementById('addItemBtn').addEventListener('click', ()=>addItemRow());
-       document.getElementById('includeGST').addEventListener('change', updateGrandTotal);
+           const qtyInput =
+               tr.querySelector('.it-qty');
 
-       window.resetFormForNewInvoice = function() {
-           document.getElementById('clientName').value='';
-           document.getElementById('clientPhone').value='';
-           document.getElementById('clientEmail').value='';
-           document.getElementById('clientAddress').value='';
-           document.getElementById('invoiceNumber').value=generateInvoiceNumber();
-           document.getElementById('invoiceDate').value=today;
-           document.getElementById('dueDate').value=dueDateValue;
-           document.getElementById('projectUrl').value='';
-           document.getElementById('notes').value='';
-           document.getElementById('includeGST').checked = true;
-           document.getElementById('invoiceStatus').value = 'Unpaid';
-           amountPaidInput.value = '0.00';
-           
-           // Retain Payee Information
-           loadPayeeFromStorage();
-           
-           itemsBody.innerHTML=''; addItemRow();
-           
-           editInvoiceIdInput.value = '';
-           formTitle.textContent = 'Create New Invoice';
-           saveInvoiceBtn.textContent = '💾 Save Invoice to Cloud';
-           saveInvoiceBtn.classList.replace('bg-indigo-600', 'bg-green-600');
-           cancelEditBtn.style.display = 'none';
 
-           updateGrandTotal();
-       };
+           const unitInput =
+               tr.querySelector('.it-unit');
 
-       cancelEditBtn.addEventListener('click', () => {
-           resetFormForNewInvoice();
-           switchScreen('dashboard');
-       });
 
-       async function saveInvoice(){
-         if(!userId){ 
-             openAuthModal();
-             alert('Please log in to save your invoice to the cloud.'); 
-             return; 
-         }
-
-         const invoiceIdToEdit = editInvoiceIdInput.value;
-         
-         const items = Array.from(itemsBody.querySelectorAll('tr')).map(r=>{
-           const desc = r.querySelector('.it-desc').value || '';
-           const qty = parseFloat(r.querySelector('.it-qty').value)||0;
-           const unit = parseFloat(r.querySelector('.it-unit').value)||0;
-           return {description:desc, qty, unit};
-         }).filter(it => it.description || it.qty || it.unit);
-
-         const subtotal = calculateCurrentItemsTotal();
-         const includeGST = document.getElementById('includeGST').checked;
-         const gst = includeGST ? subtotal * 0.10 : 0;
-         const total = subtotal + gst;
-         const amountPaid = parseFloat(amountPaidInput.value || 0);
-         const balanceDue = Math.max(0, total - amountPaid);
-
-         const invData = {
-           clientName: document.getElementById('clientName').value || '',
-           clientPhone: document.getElementById('clientPhone').value || '',
-           clientEmail: document.getElementById('clientEmail').value || '',
-           clientAddress: document.getElementById('clientAddress').value || '',
-           payeeTradingAs: document.getElementById('payeeTradingAs').value || '',
-            payeeName: document.getElementById('payeeName').value || '',
-           payeeABN: document.getElementById('payeeABN').value || '',
-           payeeAddress: document.getElementById('payeeAddress').value || '',
-           payeePhone: document.getElementById('payeePhone').value || '',
-           payeeEmail: document.getElementById('payeeEmail').value || '',
-           payeeBSB: document.getElementById('payeeBSB').value || '',
-           payeeAccount: document.getElementById('payeeAccount').value || '',
-           invoiceNumber: document.getElementById('invoiceNumber').value || (invoiceIdToEdit ? invData.invoiceNumber : generateInvoiceNumber()),
-           invoiceDate: document.getElementById('invoiceDate').value || today,
-           dueDate: document.getElementById('dueDate').value || '',
-           status: document.getElementById('invoiceStatus').value || 'Unpaid',
-           projectUrl: document.getElementById('projectUrl').value || '',
-           includeGST: includeGST,
-           notes: document.getElementById('notes').value || '',
-           logo: logoDataURL,
-           items: items,
-           subtotal: subtotal,
-           total: total,
-           amountPaid: amountPaid,
-           balanceDue: balanceDue,
-           userId: userId,
-         };
-
-         if(!invData.clientName || !invData.invoiceNumber || !invData.invoiceDate){
-           alert('Please fill Client name, Invoice number and Invoice date');
-           return;
-         }
-         
-         try {
-           if (invoiceIdToEdit) {
-               const invoiceRef = doc(db, 'invoices', invoiceIdToEdit);
-               await updateDoc(invoiceRef, invData);
-               alert(`Invoice #${invData.invoiceNumber} updated successfully!`);
-           } else {
-               const q = query(collection(db, 'invoices'),
-                 where('invoiceNumber', '==', invData.invoiceNumber),
-                 where('userId', '==', userId)
+           const q =
+               parseFloat(
+                   qtyInput.value || 0
                );
-               const existing = await getDocs(q);
 
-               if(existing.docs.length > 0){
-                   alert(`Invoice number ${invData.invoiceNumber} already exists.`);
-                   return;
-               }
-               
-               invData.createdAt = serverTimestamp();
-               await addDoc(collection(db, 'invoices'), invData);
-               alert('Invoice saved successfully!');
-           }
-           
-           resetFormForNewInvoice();
-           await loadInvoicesAndRender();
-           switchScreen('dashboard');
 
-         } catch(e){
-           console.error("Error saving document: ", e);
-           alert(`Failed to save invoice.`);
-         }
-       }
+           const u =
+               parseFloat(
+                   unitInput.value || 0
+               );
 
-       document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
 
-       window.editInvoice = function(id) {
-           const inv = invoices.find(i => i.id === id);
-           if (!inv) { alert('Invoice not found.'); return; }
-           
-           editInvoiceIdInput.value = inv.id;
-           formTitle.textContent = `Editing Invoice #${inv.invoiceNumber}`;
-           saveInvoiceBtn.textContent = '✅ Update Invoice';
-           saveInvoiceBtn.classList.replace('bg-green-600', 'bg-indigo-600');
-           cancelEditBtn.style.display = 'inline-block';
+           tr
+               .querySelector('.it-total')
+               .textContent =
+               formatCurrency(q * u);
 
-           document.getElementById('clientName').value = inv.clientName || '';
-           document.getElementById('clientPhone').value = inv.clientPhone || '';
-           document.getElementById('clientEmail').value = inv.clientEmail || '';
-           document.getElementById('clientAddress').value = inv.clientAddress || '';
-            document.getElementById('payeeTradingAs').value = inv.payeeTradingAs || '';
-            document.getElementById('payeeName').value = inv.payeeName || '';
-            document.getElementById('payeeABN').value = inv.payeeABN || '';
-            document.getElementById('payeeAddress').value = inv.payeeAddress || '';
-            document.getElementById('payeePhone').value = inv.payeePhone || '';
-            document.getElementById('payeeEmail').value = inv.payeeEmail || '';
-            document.getElementById('payeeBSB').value = inv.payeeBSB || '';
-            document.getElementById('payeeAccount').value = inv.payeeAccount || '';
-           
-           document.getElementById('invoiceNumber').value = inv.invoiceNumber || '';
-           document.getElementById('invoiceDate').value = inv.invoiceDate || today;
-           document.getElementById('dueDate').value = inv.dueDate || dueDateValue;
-           document.getElementById('invoiceStatus').value = inv.status || 'Unpaid';
-           document.getElementById('projectUrl').value = inv.projectUrl || '';
-           document.getElementById('includeGST').checked = inv.includeGST !== undefined ? inv.includeGST : true;
-           document.getElementById('notes').value = inv.notes || '';
-           amountPaidInput.value = inv.amountPaid !== undefined ? inv.amountPaid : 0;
 
-           if (inv.logo) {
-               logoDataURL = inv.logo;
-               logoPreview.src = inv.logo;
-           }
+           updateGrandTotal();
 
-           itemsBody.innerHTML = '';
-           if (inv.items && inv.items.length > 0) {
-               inv.items.forEach(item => addItemRow(item.description, item.qty, item.unit));
-           } else {
+       };
+
+
+       document
+           .getElementById('addItemBtn')
+           .addEventListener(
+               'click',
+               () => addItemRow()
+           );
+
+
+       document
+           .getElementById('includeGST')
+           .addEventListener(
+               'change',
+               updateGrandTotal
+           );
+
+
+       /* ==========================================
+          RESET FORM
+       ========================================== */
+
+       window.resetFormForNewInvoice =
+           function() {
+
+               document.getElementById('clientName').value = '';
+               document.getElementById('clientPhone').value = '';
+               document.getElementById('clientEmail').value = '';
+               document.getElementById('clientAddress').value = '';
+
+               document.getElementById('invoiceNumber').value =
+                   generateInvoiceNumber();
+
+               document.getElementById('invoiceDate').value =
+                   today;
+
+               document.getElementById('dueDate').value =
+                   dueDateValue;
+
+               document.getElementById('projectUrl').value = '';
+               document.getElementById('notes').value = '';
+
+               document.getElementById('includeGST').checked =
+                   true;
+
+               document.getElementById('invoiceStatus').value =
+                   'Unpaid';
+
+               amountPaidInput.value =
+                   '0.00';
+
+
+               loadPayeeFromStorage();
+
+
+               itemsBody.innerHTML = '';
+
                addItemRow();
+
+
+               editInvoiceIdInput.value = '';
+
+               formTitle.textContent =
+                   'Create New Invoice';
+
+
+               saveInvoiceBtn.textContent =
+                   '💾 Save Invoice to Cloud';
+
+
+               saveInvoiceBtn.classList.remove(
+                   'bg-indigo-600'
+               );
+
+               saveInvoiceBtn.classList.add(
+                   'bg-green-600'
+               );
+
+
+               cancelEditBtn.style.display =
+                   'none';
+
+
+               updateGrandTotal();
+
+           };
+
+
+       cancelEditBtn.addEventListener(
+           'click',
+           () => {
+
+               resetFormForNewInvoice();
+
+               switchScreen('dashboard');
+
            }
+       );
 
-           switchScreen('invoice-editor');
-       };
 
-       async function loadInvoicesAndRender(){
-         if(!userId) {
-           invoiceTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and manage cloud-synced invoices.</td></tr>';
-           summaryTotalAll.textContent = formatCurrency(0);
-           summaryTotalUnpaid.textContent = formatCurrency(0);
-           return;
-         }
+       /* ==========================================
+          SAVE INVOICE
+       ========================================== */
 
-         invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
-         
-         try {
-           const filterStatusVal = filterStatus.value;
-           const filterYearVal = filterYear.value;
-           const todayForCheck = new Date().toISOString().split('T')[0];
-           
-           let q = query(collection(db, 'invoices'), where('userId', '==', userId));
-           const snapshot = await getDocs(q);
-           
-           invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-           
-           invoices.sort((a, b) => {
-               const aTime = a.createdAt ? a.createdAt.seconds : 0;
-               const bTime = b.createdAt ? b.createdAt.seconds : 0;
-               return bTime - aTime;
-           });
+       async function saveInvoice() {
 
-           let totalAll = 0;
-           let totalUnpaidBalance = 0;
+           if (!userId) {
 
-           let filteredInvoices = invoices.filter(inv => {
-               let currentStatus = inv.status || 'Unpaid';
-               const balance = inv.balanceDue !== undefined ? inv.balanceDue : (inv.total - (inv.amountPaid || 0));
+               openAuthModal();
 
-               if(currentStatus !== 'Paid' && currentStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
-                   currentStatus = 'Overdue';
-               }
+               alert(
+                   'Please log in to save your invoice to the cloud.'
+               );
 
-               const invFY = getFinancialYear(inv.invoiceDate);
-               const isCorrectYear = filterYearVal === 'All' || invFY === filterYearVal;
-               const isCorrectStatus = filterStatusVal === 'All' || currentStatus === filterStatusVal;
-
-               if (isCorrectYear) {
-                   totalAll += inv.total || 0;
-                   if (currentStatus !== 'Cancelled') {
-                       totalUnpaidBalance += balance;
-                   }
-               }
-
-               return isCorrectYear && isCorrectStatus;
-           });
-
-           summaryTotalAll.textContent = formatCurrency(totalAll);
-           summaryTotalUnpaid.textContent = formatCurrency(totalUnpaidBalance);
-           
-           invoiceTableBody.innerHTML='';
-           
-           if(filteredInvoices.length === 0){
-               invoiceTableBody.innerHTML=`<tr><td colspan="6" class="text-center text-gray-500 p-4">No matching invoices found.</td></tr>`;
                return;
+
            }
 
-           filteredInvoices.forEach((inv)=>{
-               let displayStatus = inv.status || 'Unpaid';
-               const balance = inv.balanceDue !== undefined ? inv.balanceDue : (inv.total - (inv.amountPaid || 0));
 
-               if(displayStatus !== 'Paid' && displayStatus !== 'Cancelled' && inv.dueDate && inv.dueDate < todayForCheck) {
-                   displayStatus = 'Overdue';
+           const invoiceIdToEdit =
+               editInvoiceIdInput.value;
+
+
+           const items =
+               Array.from(
+                   itemsBody.querySelectorAll('tr')
+               )
+               .map(r => {
+
+                   const desc =
+                       r.querySelector('.it-desc').value || '';
+
+                   const qty =
+                       parseFloat(
+                           r.querySelector('.it-qty').value
+                       ) || 0;
+
+                   const unit =
+                       parseFloat(
+                           r.querySelector('.it-unit').value
+                       ) || 0;
+
+
+                   return {
+                       description: desc,
+                       qty,
+                       unit
+                   };
+
+               })
+               .filter(
+                   it =>
+                       it.description ||
+                       it.qty ||
+                       it.unit
+               );
+
+
+           const subtotal =
+               calculateCurrentItemsTotal();
+
+
+           const includeGST =
+               document.getElementById('includeGST').checked;
+
+
+           const gst =
+               includeGST
+                   ? subtotal * 0.10
+                   : 0;
+
+
+           const total =
+               subtotal + gst;
+
+
+           const amountPaid =
+               parseFloat(
+                   amountPaidInput.value || 0
+               );
+
+
+           const balanceDue =
+               Math.max(
+                   0,
+                   total - amountPaid
+               );
+
+
+           const invData = {
+
+               clientName:
+                   document.getElementById('clientName').value || '',
+
+               clientPhone:
+                   document.getElementById('clientPhone').value || '',
+
+               clientEmail:
+                   document.getElementById('clientEmail').value || '',
+
+               clientAddress:
+                   document.getElementById('clientAddress').value || '',
+
+
+               payeeTradingAs:
+                   document.getElementById('payeeTradingAs').value || '',
+
+               payeeName:
+                   document.getElementById('payeeName').value || '',
+
+               payeeABN:
+                   document.getElementById('payeeABN').value || '',
+
+               payeeAddress:
+                   document.getElementById('payeeAddress').value || '',
+
+               payeePhone:
+                   document.getElementById('payeePhone').value || '',
+
+               payeeEmail:
+                   document.getElementById('payeeEmail').value || '',
+
+
+               /* NEW BANK DETAILS */
+
+               payeeBSB:
+                   document.getElementById('payeeBSB').value || '',
+
+               payeeAccountName:
+                   document.getElementById('payeeAccountName').value || '',
+
+               payeeAccount:
+                   document.getElementById('payeeAccount').value || '',
+
+
+               invoiceNumber:
+                   document.getElementById('invoiceNumber').value ||
+                   generateInvoiceNumber(),
+
+               invoiceDate:
+                   document.getElementById('invoiceDate').value ||
+                   today,
+
+               dueDate:
+                   document.getElementById('dueDate').value || '',
+
+               status:
+                   document.getElementById('invoiceStatus').value ||
+                   'Unpaid',
+
+               projectUrl:
+                   document.getElementById('projectUrl').value || '',
+
+               includeGST:
+                   includeGST,
+
+               notes:
+                   document.getElementById('notes').value || '',
+
+               logo:
+                   logoDataURL,
+
+               items:
+                   items,
+
+               subtotal:
+                   subtotal,
+
+               total:
+                   total,
+
+               amountPaid:
+                   amountPaid,
+
+               balanceDue:
+                   balanceDue,
+
+               userId:
+                   userId
+
+           };
+
+
+           if (
+               !invData.clientName ||
+               !invData.invoiceNumber ||
+               !invData.invoiceDate
+           ) {
+
+               alert(
+                   'Please fill Client name, Invoice number and Invoice date'
+               );
+
+               return;
+
+           }
+
+
+           try {
+
+               if (invoiceIdToEdit) {
+
+                   const invoiceRef =
+                       doc(
+                           db,
+                           'invoices',
+                           invoiceIdToEdit
+                       );
+
+
+                   await updateDoc(
+                       invoiceRef,
+                       invData
+                   );
+
+
+                   alert(
+                       `Invoice #${invData.invoiceNumber} updated successfully!`
+                   );
+
+
+               } else {
+
+                   const q =
+                       query(
+                           collection(db, 'invoices'),
+                           where(
+                               'invoiceNumber',
+                               '==',
+                               invData.invoiceNumber
+                           ),
+                           where(
+                               'userId',
+                               '==',
+                               userId
+                           )
+                       );
+
+
+                   const existing =
+                       await getDocs(q);
+
+
+                   if (existing.docs.length > 0) {
+
+                       alert(
+                           `Invoice number ${invData.invoiceNumber} already exists.`
+                       );
+
+                       return;
+
+                   }
+
+
+                   invData.createdAt =
+                       serverTimestamp();
+
+
+                   await addDoc(
+                       collection(db, 'invoices'),
+                       invData
+                   );
+
+
+                   alert(
+                       'Invoice saved successfully!'
+                   );
+
                }
 
-               const trClass = displayStatus === 'Paid' ? 'status-paid' : displayStatus === 'Partial' ? 'status-partial' : displayStatus === 'Overdue' ? 'status-overdue' : 'status-unpaid';
 
-               const projectBtnHtml = inv.projectUrl ? 
-                   `<a href="${escapeHtml(inv.projectUrl)}" target="_blank" rel="noopener noreferrer" class="bg-purple-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-purple-700 inline-block font-medium">Project</a>` : '';
+               resetFormForNewInvoice();
 
-               const tr = document.createElement('tr');
-               tr.className = `border-b border-gray-100 ${trClass}`;
-               tr.innerHTML = `
-                 <td class="p-3 font-semibold">${escapeHtml(inv.invoiceNumber)}</td>
-                 <td class="p-3">${escapeHtml(inv.clientName)}</td>
-                 <td class="p-3 text-gray-600">${escapeHtml(inv.invoiceDate)}</td>
-                 <td class="p-3 font-bold text-gray-800">${formatCurrency(balance)} <span class="text-xs font-normal text-gray-500">/ ${formatCurrency(inv.total)}</span></td>
-                 <td class="p-3 font-bold">${escapeHtml(displayStatus)}</td>
-                 <td class="p-3 space-x-1 whitespace-nowrap">
-                   <button data-id="${inv.id}" class="pdfBtn bg-teal-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-teal-700 font-medium">PDF ⬇</button>
-                   ${projectBtnHtml}
-                   <button data-id="${inv.id}" class="editBtn bg-blue-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-700">Edit</button>
-                   <button data-id="${inv.id}" class="delBtn bg-red-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-700">Del</button>
-                 </td>`;
-               invoiceTableBody.appendChild(tr);
-           });
+               await loadInvoicesAndRender();
 
-           document.querySelectorAll('.pdfBtn').forEach(b=>b.addEventListener('click', e=>downloadPDF(e.currentTarget.dataset.id)));
-           document.querySelectorAll('.editBtn').forEach(b=>b.addEventListener('click', e=>editInvoice(e.currentTarget.dataset.id)));
-           document.querySelectorAll('.delBtn').forEach(b=>b.addEventListener('click', e=>{
-               if(window.confirm('Are you sure you want to delete this invoice?')){ deleteInvoice(e.currentTarget.dataset.id); }
-           }));
+               switchScreen('dashboard');
 
-         } catch(e) {
-           console.error("Error loading documents: ", e);
-           invoiceTableBody.innerHTML='<tr><td colspan="6" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
-         }
+
+           } catch (e) {
+
+               console.error(
+                   "Error saving document: ",
+                   e
+               );
+
+               alert(
+                   'Failed to save invoice.'
+               );
+
+           }
+
        }
 
-       async function deleteInvoice(id){
-         try {
-           const invoiceRef = doc(db, 'invoices', id);
-           await deleteDoc(invoiceRef);
-           await loadInvoicesAndRender();
-         } catch(e) {
-           console.error("Error deleting document: ", e);
-           alert('Failed to delete invoice.');
-         }
+
+       document
+           .getElementById('saveInvoiceBtn')
+           .addEventListener(
+               'click',
+               saveInvoice
+           );
+
+
+       /* ==========================================
+          EDIT INVOICE
+       ========================================== */
+
+       window.editInvoice =
+           function(id) {
+
+               const inv =
+                   invoices.find(
+                       i => i.id === id
+                   );
+
+
+               if (!inv) {
+
+                   alert(
+                       'Invoice not found.'
+                   );
+
+                   return;
+
+               }
+
+
+               editInvoiceIdInput.value =
+                   inv.id;
+
+
+               formTitle.textContent =
+                   `Editing Invoice #${inv.invoiceNumber}`;
+
+
+               saveInvoiceBtn.textContent =
+                   '✅ Update Invoice';
+
+
+               saveInvoiceBtn.classList.remove(
+                   'bg-green-600'
+               );
+
+
+               saveInvoiceBtn.classList.add(
+                   'bg-indigo-600'
+               );
+
+
+               cancelEditBtn.style.display =
+                   'inline-block';
+
+
+               document.getElementById('clientName').value =
+                   inv.clientName || '';
+
+               document.getElementById('clientPhone').value =
+                   inv.clientPhone || '';
+
+               document.getElementById('clientEmail').value =
+                   inv.clientEmail || '';
+
+               document.getElementById('clientAddress').value =
+                   inv.clientAddress || '';
+
+
+               document.getElementById('payeeTradingAs').value =
+                   inv.payeeTradingAs || '';
+
+               document.getElementById('payeeName').value =
+                   inv.payeeName || '';
+
+               document.getElementById('payeeABN').value =
+                   inv.payeeABN || '';
+
+               document.getElementById('payeeAddress').value =
+                   inv.payeeAddress || '';
+
+               document.getElementById('payeePhone').value =
+                   inv.payeePhone || '';
+
+               document.getElementById('payeeEmail').value =
+                   inv.payeeEmail || '';
+
+
+               /* NEW BANK DETAILS */
+
+               document.getElementById('payeeBSB').value =
+                   inv.payeeBSB || '';
+
+               document.getElementById('payeeAccountName').value =
+                   inv.payeeAccountName || '';
+
+               document.getElementById('payeeAccount').value =
+                   inv.payeeAccount || '';
+
+
+               document.getElementById('invoiceNumber').value =
+                   inv.invoiceNumber || '';
+
+               document.getElementById('invoiceDate').value =
+                   inv.invoiceDate || today;
+
+               document.getElementById('dueDate').value =
+                   inv.dueDate || dueDateValue;
+
+               document.getElementById('invoiceStatus').value =
+                   inv.status || 'Unpaid';
+
+               document.getElementById('projectUrl').value =
+                   inv.projectUrl || '';
+
+               document.getElementById('includeGST').checked =
+                   inv.includeGST !== undefined
+                       ? inv.includeGST
+                       : true;
+
+               document.getElementById('notes').value =
+                   inv.notes || '';
+
+
+               amountPaidInput.value =
+                   inv.amountPaid !== undefined
+                       ? inv.amountPaid
+                       : 0;
+
+
+               if (inv.logo) {
+
+                   logoDataURL =
+                       inv.logo;
+
+                   logoPreview.src =
+                       inv.logo;
+
+               }
+
+
+               itemsBody.innerHTML = '';
+
+
+               if (
+                   inv.items &&
+                   inv.items.length > 0
+               ) {
+
+                   inv.items.forEach(
+                       item =>
+                           addItemRow(
+                               item.description,
+                               item.qty,
+                               item.unit
+                           )
+                   );
+
+               } else {
+
+                   addItemRow();
+
+               }
+
+
+               updateGrandTotal();
+
+               switchScreen(
+                   'invoice-editor'
+               );
+
+           };
+
+
+       /* ==========================================
+          LOAD INVOICES
+       ========================================== */
+
+       async function loadInvoicesAndRender() {
+
+           if (!userId) {
+
+               invoiceTableBody.innerHTML =
+                   '<tr><td colspan="6" class="text-center text-gray-500 p-4">Please log in to view and manage cloud-synced invoices.</td></tr>';
+
+               summaryTotalAll.textContent =
+                   formatCurrency(0);
+
+               summaryTotalUnpaid.textContent =
+                   formatCurrency(0);
+
+               return;
+
+           }
+
+
+           invoiceTableBody.innerHTML =
+               '<tr><td colspan="6" class="text-center text-gray-500 p-4">Loading invoices...</td></tr>';
+
+
+           try {
+
+               const filterStatusVal =
+                   filterStatus.value;
+
+
+               const filterYearVal =
+                   filterYear.value;
+
+
+               const todayForCheck =
+                   new Date()
+                       .toISOString()
+                       .split('T')[0];
+
+
+               const q =
+                   query(
+                       collection(db, 'invoices'),
+                       where(
+                           'userId',
+                           '==',
+                           userId
+                       )
+                   );
+
+
+               const snapshot =
+                   await getDocs(q);
+
+
+               invoices =
+                   snapshot.docs.map(
+                       doc => ({
+                           id: doc.id,
+                           ...doc.data()
+                       })
+                   );
+
+
+               invoices.sort(
+                   (a, b) => {
+
+                       const aTime =
+                           a.createdAt
+                               ? a.createdAt.seconds
+                               : 0;
+
+                       const bTime =
+                           b.createdAt
+                               ? b.createdAt.seconds
+                               : 0;
+
+                       return bTime - aTime;
+
+                   }
+               );
+
+
+               let totalAll = 0;
+               let totalUnpaidBalance = 0;
+
+
+               let filteredInvoices =
+                   invoices.filter(inv => {
+
+                       let currentStatus =
+                           inv.status || 'Unpaid';
+
+
+                       const balance =
+                           inv.balanceDue !== undefined
+                               ? inv.balanceDue
+                               : (
+                                   inv.total -
+                                   (inv.amountPaid || 0)
+                               );
+
+
+                       if (
+                           currentStatus !== 'Paid' &&
+                           currentStatus !== 'Cancelled' &&
+                           inv.dueDate &&
+                           inv.dueDate < todayForCheck
+                       ) {
+
+                           currentStatus =
+                               'Overdue';
+
+                       }
+
+
+                       const invFY =
+                           getFinancialYear(
+                               inv.invoiceDate
+                           );
+
+
+                       const isCorrectYear =
+                           filterYearVal === 'All' ||
+                           invFY === filterYearVal;
+
+
+                       const isCorrectStatus =
+                           filterStatusVal === 'All' ||
+                           currentStatus === filterStatusVal;
+
+
+                       if (isCorrectYear) {
+
+                           totalAll +=
+                               inv.total || 0;
+
+
+                           if (
+                               currentStatus !== 'Cancelled'
+                           ) {
+
+                               totalUnpaidBalance +=
+                                   balance;
+
+                           }
+
+                       }
+
+
+                       return (
+                           isCorrectYear &&
+                           isCorrectStatus
+                       );
+
+                   });
+
+
+               summaryTotalAll.textContent =
+                   formatCurrency(totalAll);
+
+
+               summaryTotalUnpaid.textContent =
+                   formatCurrency(
+                       totalUnpaidBalance
+                   );
+
+
+               invoiceTableBody.innerHTML = '';
+
+
+               if (
+                   filteredInvoices.length === 0
+               ) {
+
+                   invoiceTableBody.innerHTML =
+                       '<tr><td colspan="6" class="text-center text-gray-500 p-4">No matching invoices found.</td></tr>';
+
+                   return;
+
+               }
+
+
+               filteredInvoices.forEach(
+                   inv => {
+
+                       let displayStatus =
+                           inv.status || 'Unpaid';
+
+
+                       const balance =
+                           inv.balanceDue !== undefined
+                               ? inv.balanceDue
+                               : (
+                                   inv.total -
+                                   (inv.amountPaid || 0)
+                               );
+
+
+                       if (
+                           displayStatus !== 'Paid' &&
+                           displayStatus !== 'Cancelled' &&
+                           inv.dueDate &&
+                           inv.dueDate < todayForCheck
+                       ) {
+
+                           displayStatus =
+                               'Overdue';
+
+                       }
+
+
+                       const trClass =
+                           displayStatus === 'Paid'
+                               ? 'status-paid'
+                               : displayStatus === 'Partial'
+                                   ? 'status-partial'
+                                   : displayStatus === 'Overdue'
+                                       ? 'status-overdue'
+                                       : 'status-unpaid';
+
+
+                       const projectBtnHtml =
+                           inv.projectUrl
+                               ? `
+                                   <a
+                                       href="${escapeHtml(inv.projectUrl)}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="bg-purple-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-purple-700 inline-block font-medium">
+                                       Project
+                                   </a>
+                               `
+                               : '';
+
+
+                       const tr =
+                           document.createElement('tr');
+
+
+                       tr.className =
+                           `border-b border-gray-100 ${trClass}`;
+
+
+                       tr.innerHTML = `
+
+                           <td class="p-3 font-semibold">
+                               ${escapeHtml(inv.invoiceNumber)}
+                           </td>
+
+                           <td class="p-3">
+                               ${escapeHtml(inv.clientName)}
+                           </td>
+
+                           <td class="p-3 text-gray-600">
+                               ${escapeHtml(inv.invoiceDate)}
+                           </td>
+
+                           <td class="p-3 font-bold text-gray-800">
+                               ${formatCurrency(balance)}
+                               <span class="text-xs font-normal text-gray-500">
+                                   / ${formatCurrency(inv.total)}
+                               </span>
+                           </td>
+
+                           <td class="p-3 font-bold">
+                               ${escapeHtml(displayStatus)}
+                           </td>
+
+                           <td class="p-3 space-x-1 whitespace-nowrap">
+
+                               <button
+                                   data-id="${inv.id}"
+                                   class="pdfBtn bg-teal-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-teal-700 font-medium">
+                                   PDF ⬇
+                               </button>
+
+                               ${projectBtnHtml}
+
+                               <button
+                                   data-id="${inv.id}"
+                                   class="editBtn bg-blue-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-700">
+                                   Edit
+                               </button>
+
+                               <button
+                                   data-id="${inv.id}"
+                                   class="delBtn bg-red-600 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-700">
+                                   Del
+                               </button>
+
+                           </td>
+
+                       `;
+
+
+                       invoiceTableBody.appendChild(tr);
+
+                   }
+               );
+
+
+               document
+                   .querySelectorAll('.pdfBtn')
+                   .forEach(
+                       b =>
+                           b.addEventListener(
+                               'click',
+                               e =>
+                                   downloadPDF(
+                                       e.currentTarget.dataset.id
+                                   )
+                           )
+                   );
+
+
+               document
+                   .querySelectorAll('.editBtn')
+                   .forEach(
+                       b =>
+                           b.addEventListener(
+                               'click',
+                               e =>
+                                   editInvoice(
+                                       e.currentTarget.dataset.id
+                                   )
+                           )
+                   );
+
+
+               document
+                   .querySelectorAll('.delBtn')
+                   .forEach(
+                       b =>
+                           b.addEventListener(
+                               'click',
+                               e => {
+
+                                   if (
+                                       window.confirm(
+                                           'Are you sure you want to delete this invoice?'
+                                       )
+                                   ) {
+
+                                       deleteInvoice(
+                                           e.currentTarget.dataset.id
+                                       );
+
+                                   }
+
+                               }
+                           )
+                   );
+
+
+           } catch (e) {
+
+               console.error(
+                   "Error loading documents: ",
+                   e
+               );
+
+
+               invoiceTableBody.innerHTML =
+                   '<tr><td colspan="6" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
+
+           }
+
        }
 
-       // --- Direct PDF Download Generator ---
-       window.downloadPDF = function(id){
-         const inv = invoices.find(i => i.id === id);
-         if (!inv) return;
 
-         const subtotal = inv.subtotal || inv.items.reduce((s,it)=>s + (it.qty*it.unit),0);
-         const gst = inv.includeGST ? subtotal * 0.10 : 0;
-         const total = inv.total || (subtotal + gst);
-         const paid = inv.amountPaid || 0;
-         const balance = inv.balanceDue !== undefined ? inv.balanceDue : (total - paid);
+       /* ==========================================
+          DELETE
+       ========================================== */
 
-         const itemsHtml = inv.items.map(it=>`
-           <tr style="border-bottom: 1px solid #e5e7eb;">
-             <td style="padding: 10px 8px; text-align: left;">${escapeHtml(it.description)}</td>
-             <td style="padding: 10px 8px; text-align: right;">${it.qty}</td>
-             <td style="padding: 10px 8px; text-align: right;">${formatCurrency(it.unit)}</td>
-             <td style="padding: 10px 8px; text-align: right; font-weight: 500;">${formatCurrency(it.qty*it.unit)}</td>
-           </tr>
-         `).join('');
+       async function deleteInvoice(id) {
 
-         const pdfHtml = `
-           <div style="font-family: Arial, sans-serif; padding: 30px; color: #000000; max-width: 800px; background: #fff;">
-             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
-               <div>
-                 ${inv.logo ? `<img src="${escapeHtml(inv.logo)}" style="max-height: 70px; margin-bottom: 12px; display: block;">` : ''}
-                 ${inv.payeeTradingAs ? `<p style="margin:0 0 2px 0; font-size: 10px; color: #000000;">${escapeHtml(inv.payeeTradingAs)} trading as:</p>` : ''}
-                  <h2 style="margin:0; font-size: 20px; font-weight: bold; color: #000000;">${escapeHtml(inv.payeeName||'')}</h2>
-                 <p style="margin:2px 0; font-size: 12px; color: #000000;">ABN: ${escapeHtml(inv.payeeABN||'')}</p>
-                 <p style="margin:2px 0; font-size: 12px; color: #000000; whitespace: pre-line;">${escapeHtml(inv.payeeAddress||'')}</p>
-                 <p style="margin:2px 0; font-size: 12px; color: #000000;">Phone: ${escapeHtml(inv.payeePhone||'')} | Email: ${escapeHtml(inv.payeeEmail||'')}</p>
-               </div>
-               <div style="text-align: right;">
-                 <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #000000; letter-spacing: 1px;">TAX INVOICE</h1>
-                 <p style="margin: 6px 0 2px 0; font-size: 13px;"><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}</p>
-                 <p style="margin: 2px 0; font-size: 13px;"><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}</p>
-                 <p style="margin: 2px 0; font-size: 13px;"><strong>Due Date:</strong> ${escapeHtml(inv.dueDate||'N/A')}</p>
-                 <p style="margin: 6px 0 0 0; font-size: 13px;"><strong>Status:</strong> <span style="font-weight: bold; color:#000000">${escapeHtml(inv.status)}</span></p>
-               </div>
-             </div>
+           try {
 
-             <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
-               <h3 style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #000000; font-weight: bold;">Bill To:</h3>
-               <p style="margin: 0; font-size: 14px; font-weight: bold; color: #000000;">${escapeHtml(inv.clientName)}</p>
-               <p style="margin: 2px 0; font-size: 12px; color: #000000; whitespace: pre-line;">${escapeHtml(inv.clientAddress)}</p>
-               <p style="margin: 2px 0; font-size: 12px; color: #000000;">${escapeHtml(inv.clientPhone)} | ${escapeHtml(inv.clientEmail)}</p>
-               ${inv.projectUrl ? `<p style="margin: 6px 0 0 0; font-size: 12px;"><strong>Project:</strong> <a href="${escapeHtml(inv.projectUrl)}" style="color: #000000;">${escapeHtml(inv.projectUrl)}</a></p>` : ''}
-             </div>
+               const invoiceRef =
+                   doc(
+                       db,
+                       'invoices',
+                       id
+                   );
 
-             <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
-               <thead>
-                 <tr style="background-color: #f3f4f6; border-bottom: 2px solid #e5e7eb; color: #000000;">
-                   <th style="padding: 10px 8px; text-align: left;">Description</th>
-                   <th style="padding: 10px 8px; text-align: right; width: 60px;">Qty</th>
-                   <th style="padding: 10px 8px; text-align: right; width: 90px;">Unit Price</th>
-                   <th style="padding: 10px 8px; text-align: right; width: 90px;">Total</th>
-                 </tr>
-               </thead>
-               <tbody>${itemsHtml}</tbody>
-             </table>
 
-             <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
-               <div style="width: 260px; font-size: 13px;">
-                 <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-                   <span style="color: #000000;">Subtotal:</span>
-                   <span>${formatCurrency(subtotal)}</span>
-                 </div>
-                 ${inv.includeGST ? `
-                 <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-                   <span style="color: #000000;">GST (10%):</span>
-                   <span>${formatCurrency(gst)}</span>
-                 </div>` : ''}
-                 <div style="display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #e5e7eb; font-weight: bold;">
-                   <span>Grand Total:</span>
-                   <span>${formatCurrency(total)}</span>
-                 </div>
-                 <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #000000;">
-                   <span>Paid to Date:</span>
-                   <span>-${formatCurrency(paid)}</span>
-                 </div>
-                 <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 2px solid #111827; font-weight: 800; font-size: 15px; color: #000000;">
-                   <span>Balance Due:</span>
-                   <span>${formatCurrency(balance)}</span>
-                 </div>
-               </div>
-             </div>
+               await deleteDoc(
+                   invoiceRef
+               );
 
-             ${inv.notes ? `
-             <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
-               <h4 style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; color: #000000;">Payment Terms & Notes:</h4>
-               <p style="margin: 0; font-size: 12px; color: #000000; whitespace: pre-line;">${escapeHtml(inv.notes)}</p>
-             </div>` : ''}
-           </div>
-         `;
 
-         const element = document.createElement('div');
-         element.innerHTML = pdfHtml;
+               await loadInvoicesAndRender();
 
-         const opt = {
-           margin:       0.3,
-           filename:     `Invoice_${inv.invoiceNumber}_${inv.clientName.replace(/\s+/g, '_')}.pdf`,
-           image:        { type: 'jpeg', quality: 0.98 },
-           html2canvas:  { scale: 2 },
-           jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-         };
 
-         html2pdf().set(opt).from(element).save();
-       };
+           } catch (e) {
+
+               console.error(
+                   "Error deleting document: ",
+                   e
+               );
+
+
+               alert(
+                   'Failed to delete invoice.'
+               );
+
+           }
+
+       }
+
+
+       /* ==========================================
+          PDF GENERATOR
+       ========================================== */
+
+       window.downloadPDF =
+           function(id) {
+
+               const inv =
+                   invoices.find(
+                       i => i.id === id
+                   );
+
+
+               if (!inv) return;
+
+
+               const subtotal =
+                   inv.subtotal ||
+                   inv.items.reduce(
+                       (s, it) =>
+                           s + (
+                               it.qty *
+                               it.unit
+                           ),
+                       0
+                   );
+
+
+               const gst =
+                   inv.includeGST
+                       ? subtotal * 0.10
+                       : 0;
+
+
+               const total =
+                   inv.total ||
+                   (subtotal + gst);
+
+
+               const paid =
+                   inv.amountPaid || 0;
+
+
+               const balance =
+                   inv.balanceDue !== undefined
+                       ? inv.balanceDue
+                       : (
+                           total - paid
+                       );
+
+
+               const itemsHtml =
+                   inv.items
+                       .map(
+                           it => `
+
+                               <tr
+                                   style="border-bottom:1px solid #e5e7eb;">
+
+                                   <td
+                                       style="padding:10px 8px;text-align:left;">
+                                       ${escapeHtml(it.description)}
+                                   </td>
+
+                                   <td
+                                       style="padding:10px 8px;text-align:right;">
+                                       ${it.qty}
+                                   </td>
+
+                                   <td
+                                       style="padding:10px 8px;text-align:right;">
+                                       ${formatCurrency(it.unit)}
+                                   </td>
+
+                                   <td
+                                       style="padding:10px 8px;text-align:right;font-weight:500;">
+                                       ${formatCurrency(
+                                           it.qty * it.unit
+                                       )}
+                                   </td>
+
+                               </tr>
+
+                           `
+                       )
+                       .join('');
+
+
+               /*
+                * BANK DETAILS
+                *
+                * This section is NEW.
+                *
+                * It will only appear if at least
+                * one bank detail has been entered.
+                */
+
+               const hasBankDetails =
+                   inv.payeeBSB ||
+                   inv.payeeAccountName ||
+                   inv.payeeAccount;
+
+
+               const bankDetailsHtml =
+                   hasBankDetails
+                       ? `
+
+                           <div
+                               style="
+                                   margin-top:25px;
+                                   padding:15px;
+                                   background:#f9fafb;
+                                   border:1px solid #e5e7eb;
+                                   border-radius:8px;
+                               ">
+
+                               <h4
+                                   style="
+                                       margin:0 0 8px 0;
+                                       font-size:12px;
+                                       text-transform:uppercase;
+                                       color:#000000;
+                                       font-weight:bold;
+                                   ">
+                                   Payment Details
+                               </h4>
+
+
+                               <table
+                                   style="
+                                       width:100%;
+                                       border-collapse:collapse;
+                                       font-size:12px;
+                                       color:#000000;
+                                   ">
+
+                                   <tbody>
+
+                                       ${
+                                           inv.payeeBSB
+                                               ? `
+                                                   <tr>
+                                                       <td
+                                                           style="
+                                                               padding:3px 0;
+                                                               font-weight:bold;
+                                                               width:120px;
+                                                           ">
+                                                           BSB:
+                                                       </td>
+
+                                                       <td
+                                                           style="padding:3px 0;">
+                                                           ${escapeHtml(
+                                                               inv.payeeBSB
+                                                           )}
+                                                       </td>
+                                                   </tr>
+                                               `
+                                               : ''
+                                       }
+
+
+                                       ${
+                                           inv.payeeAccountName
+                                               ? `
+                                                   <tr>
+                                                       <td
+                                                           style="
+                                                               padding:3px 0;
+                                                               font-weight:bold;
+                                                           ">
+                                                           Account Name:
+                                                       </td>
+
+                                                       <td
+                                                           style="padding:3px 0;">
+                                                           ${escapeHtml(
+                                                               inv.payeeAccountName
+                                                           )}
+                                                       </td>
+                                                   </tr>
+                                               `
+                                               : ''
+                                       }
+
+
+                                       ${
+                                           inv.payeeAccount
+                                               ? `
+                                                   <tr>
+                                                       <td
+                                                           style="
+                                                               padding:3px 0;
+                                                               font-weight:bold;
+                                                           ">
+                                                           Account Number:
+                                                       </td>
+
+                                                       <td
+                                                           style="padding:3px 0;">
+                                                           ${escapeHtml(
+                                                               inv.payeeAccount
+                                                           )}
+                                                       </td>
+                                                   </tr>
+                                               `
+                                               : ''
+                                       }
+
+                                   </tbody>
+
+                               </table>
+
+                           </div>
+
+                       `
+                       : '';
+
+
+               /* =================================
+                  PDF HTML
+               ================================= */
+
+               const pdfHtml = `
+
+                   <div
+                       style="
+                           font-family:Arial,sans-serif;
+                           padding:30px;
+                           color:#000000;
+                           max-width:800px;
+                           background:#ffffff;
+                       ">
+
+
+                       <!-- HEADER -->
+
+                       <div
+                           style="
+                               display:flex;
+                               justify-content:space-between;
+                               align-items:flex-start;
+                               margin-bottom:30px;
+                           ">
+
+
+                           <div>
+
+                               ${
+                                   inv.logo
+                                       ? `
+                                           <img
+                                               src="${escapeHtml(inv.logo)}"
+                                               style="
+                                                   max-height:70px;
+                                                   margin-bottom:12px;
+                                                   display:block;
+                                               ">
+                                       `
+                                       : ''
+                               }
+
+
+                               ${
+                                   inv.payeeTradingAs
+                                       ? `
+                                           <p
+                                               style="
+                                                   margin:0 0 2px 0;
+                                                   font-size:10px;
+                                                   color:#000000;
+                                               ">
+                                               ${escapeHtml(
+                                                   inv.payeeTradingAs
+                                               )}
+                                           </p>
+                                       `
+                                       : ''
+                               }
+
+
+                               <h2
+                                   style="
+                                       margin:0;
+                                       font-size:20px;
+                                       font-weight:bold;
+                                       color:#000000;
+                                   ">
+                                   ${escapeHtml(
+                                       inv.payeeName || ''
+                                   )}
+                               </h2>
+
+
+                               ${
+                                   inv.payeeABN
+                                       ? `
+                                           <p
+                                               style="
+                                                   margin:2px 0;
+                                                   font-size:12px;
+                                                   color:#000000;
+                                               ">
+                                               ABN:
+                                               ${escapeHtml(
+                                                   inv.payeeABN
+                                               )}
+                                           </p>
+                                       `
+                                       : ''
+                               }
+
+
+                               ${
+                                   inv.payeeAddress
+                                       ? `
+                                           <p
+                                               style="
+                                                   margin:2px 0;
+                                                   font-size:12px;
+                                                   color:#000000;
+                                                   white-space:pre-line;
+                                               ">
+                                               ${escapeHtml(
+                                                   inv.payeeAddress
+                                               )}
+                                           </p>
+                                       `
+                                       : ''
+                               }
+
+
+                               <p
+                                   style="
+                                       margin:2px 0;
+                                       font-size:12px;
+                                       color:#000000;
+                                   ">
+
+                                   ${
+                                       inv.payeePhone
+                                           ? `Phone: ${escapeHtml(inv.payeePhone)}`
+                                           : ''
+                                   }
+
+                                   ${
+                                       inv.payeePhone &&
+                                       inv.payeeEmail
+                                           ? ' | '
+                                           : ''
+                                   }
+
+                                   ${
+                                       inv.payeeEmail
+                                           ? `Email: ${escapeHtml(inv.payeeEmail)}`
+                                           : ''
+                                   }
+
+                               </p>
+
+                           </div>
+
+
+                           <!-- INVOICE TITLE -->
+
+                           <div
+                               style="text-align:right;">
+
+                               <h1
+                                   style="
+                                       margin:0;
+                                       font-size:28px;
+                                       font-weight:900;
+                                       color:#000000;
+                                       letter-spacing:1px;
+                                   ">
+                                   TAX INVOICE
+                               </h1>
+
+
+                               <p
+                                   style="
+                                       margin:6px 0 2px 0;
+                                       font-size:13px;
+                                   ">
+                                   <strong>Invoice #:</strong>
+                                   ${escapeHtml(
+                                       inv.invoiceNumber
+                                   )}
+                               </p>
+
+
+                               <p
+                                   style="
+                                       margin:2px 0;
+                                       font-size:13px;
+                                   ">
+                                   <strong>Date:</strong>
+                                   ${escapeHtml(
+                                       inv.invoiceDate
+                                   )}
+                               </p>
+
+
+                               <p
+                                   style="
+                                       margin:2px 0;
+                                       font-size:13px;
+                                   ">
+                                   <strong>Due Date:</strong>
+                                   ${escapeHtml(
+                                       inv.dueDate || 'N/A'
+                                   )}
+                               </p>
+
+
+                               <p
+                                   style="
+                                       margin:6px 0 0 0;
+                                       font-size:13px;
+                                   ">
+                                   <strong>Status:</strong>
+
+                                   <span
+                                       style="
+                                           font-weight:bold;
+                                           color:#000000;
+                                       ">
+                                       ${escapeHtml(
+                                           inv.status || 'Unpaid'
+                                       )}
+                                   </span>
+
+                               </p>
+
+                           </div>
+
+                       </div>
+
+
+                       <!-- BILL TO -->
+
+                       <div
+                           style="
+                               background-color:#f9fafb;
+                               border:1px solid #e5e7eb;
+                               border-radius:8px;
+                               padding:15px;
+                               margin-bottom:25px;
+                           ">
+
+                           <h3
+                               style="
+                                   margin:0 0 8px 0;
+                                   font-size:12px;
+                                   text-transform:uppercase;
+                                   color:#000000;
+                                   font-weight:bold;
+                               ">
+                               Bill To:
+                           </h3>
+
+
+                           <p
+                               style="
+                                   margin:0;
+                                   font-size:14px;
+                                   font-weight:bold;
+                                   color:#000000;
+                               ">
+                               ${escapeHtml(
+                                   inv.clientName
+                               )}
+                           </p>
+
+
+                           ${
+                               inv.clientAddress
+                                   ? `
+                                       <p
+                                           style="
+                                               margin:2px 0;
+                                               font-size:12px;
+                                               color:#000000;
+                                               white-space:pre-line;
+                                           ">
+                                           ${escapeHtml(
+                                               inv.clientAddress
+                                           )}
+                                       </p>
+                                   `
+                                   : ''
+                           }
+
+
+                           ${
+                               inv.clientPhone ||
+                               inv.clientEmail
+                                   ? `
+                                       <p
+                                           style="
+                                               margin:2px 0;
+                                               font-size:12px;
+                                               color:#000000;
+                                           ">
+
+                                           ${escapeHtml(
+                                               inv.clientPhone || ''
+                                           )}
+
+                                           ${
+                                               inv.clientPhone &&
+                                               inv.clientEmail
+                                                   ? ' | '
+                                                   : ''
+                                           }
+
+                                           ${escapeHtml(
+                                               inv.clientEmail || ''
+                                           )}
+
+                                       </p>
+                                   `
+                                   : ''
+                           }
+
+
+                           ${
+                               inv.projectUrl
+                                   ? `
+                                       <p
+                                           style="
+                                               margin:6px 0 0 0;
+                                               font-size:12px;
+                                           ">
+
+                                           <strong>
+                                               Project:
+                                           </strong>
+
+                                           <a
+                                               href="${escapeHtml(inv.projectUrl)}"
+                                               style="color:#000000;">
+                                               ${escapeHtml(
+                                                   inv.projectUrl
+                                               )}
+                                           </a>
+
+                                       </p>
+                                   `
+                                   : ''
+                           }
+
+                       </div>
+
+
+                       <!-- ITEMS -->
+
+                       <table
+                           style="
+                               width:100%;
+                               border-collapse:collapse;
+                               margin-bottom:25px;
+                               font-size:13px;
+                           ">
+
+                           <thead>
+
+                               <tr
+                                   style="
+                                       background-color:#f3f4f6;
+                                       border-bottom:2px solid #e5e7eb;
+                                       color:#000000;
+                                   ">
+
+                                   <th
+                                       style="
+                                           padding:10px 8px;
+                                           text-align:left;
+                                       ">
+                                       Description
+                                   </th>
+
+                                   <th
+                                       style="
+                                           padding:10px 8px;
+                                           text-align:right;
+                                           width:60px;
+                                       ">
+                                       Qty
+                                   </th>
+
+                                   <th
+                                       style="
+                                           padding:10px 8px;
+                                           text-align:right;
+                                           width:90px;
+                                       ">
+                                       Unit Price
+                                   </th>
+
+                                   <th
+                                       style="
+                                           padding:10px 8px;
+                                           text-align:right;
+                                           width:90px;
+                                       ">
+                                       Total
+                                   </th>
+
+                               </tr>
+
+                           </thead>
+
+
+                           <tbody>
+                               ${itemsHtml}
+                           </tbody>
+
+                       </table>
+
+
+                       <!-- TOTALS -->
+
+                       <div
+                           style="
+                               display:flex;
+                               justify-content:flex-end;
+                               margin-bottom:20px;
+                           ">
+
+                           <div
+                               style="
+                                   width:260px;
+                                   font-size:13px;
+                               ">
+
+
+                               <div
+                                   style="
+                                       display:flex;
+                                       justify-content:space-between;
+                                       padding:4px 0;
+                                   ">
+
+                                   <span>
+                                       Subtotal:
+                                   </span>
+
+                                   <span>
+                                       ${formatCurrency(subtotal)}
+                                   </span>
+
+                               </div>
+
+
+                               ${
+                                   inv.includeGST
+                                       ? `
+                                           <div
+                                               style="
+                                                   display:flex;
+                                                   justify-content:space-between;
+                                                   padding:4px 0;
+                                               ">
+
+                                               <span>
+                                                   GST (10%):
+                                               </span>
+
+                                               <span>
+                                                   ${formatCurrency(gst)}
+                                               </span>
+
+                                           </div>
+                                       `
+                                       : ''
+                               }
+
+
+                               <div
+                                   style="
+                                       display:flex;
+                                       justify-content:space-between;
+                                       padding:6px 0;
+                                       border-top:1px solid #e5e7eb;
+                                       font-weight:bold;
+                                   ">
+
+                                   <span>
+                                       Grand Total:
+                                   </span>
+
+                                   <span>
+                                       ${formatCurrency(total)}
+                                   </span>
+
+                               </div>
+
+
+                               <div
+                                   style="
+                                       display:flex;
+                                       justify-content:space-between;
+                                       padding:4px 0;
+                                       color:#000000;
+                                   ">
+
+                                   <span>
+                                       Paid to Date:
+                                   </span>
+
+                                   <span>
+                                       -${formatCurrency(paid)}
+                                   </span>
+
+                               </div>
+
+
+                               <div
+                                   style="
+                                       display:flex;
+                                       justify-content:space-between;
+                                       padding:8px 0;
+                                       border-top:2px solid #111827;
+                                       font-weight:800;
+                                       font-size:15px;
+                                       color:#000000;
+                                   ">
+
+                                   <span>
+                                       Balance Due:
+                                   </span>
+
+                                   <span>
+                                       ${formatCurrency(balance)}
+                                   </span>
+
+                               </div>
+
+                           </div>
+
+                       </div>
+
+
+                       <!-- =================================
+                            PAYMENT / BANK DETAILS
+                       ================================= -->
+
+                       ${bankDetailsHtml}
+
+
+                       <!-- NOTES -->
+
+                       ${
+                           inv.notes
+                               ? `
+
+                                   <div
+                                       style="
+                                           border-top:1px solid #e5e7eb;
+                                           padding-top:15px;
+                                           margin-top:25px;
+                                       ">
+
+                                       <h4
+                                           style="
+                                               margin:0 0 6px 0;
+                                               font-size:12px;
+                                               text-transform:uppercase;
+                                               color:#000000;
+                                           ">
+                                           Payment Terms & Notes:
+                                       </h4>
+
+
+                                       <p
+                                           style="
+                                               margin:0;
+                                               font-size:12px;
+                                               color:#000000;
+                                               white-space:pre-line;
+                                           ">
+                                           ${escapeHtml(
+                                               inv.notes
+                                           )}
+                                       </p>
+
+                                   </div>
+
+                               `
+                               : ''
+                       }
+
+                   </div>
+
+               `;
+
+
+               const element =
+                   document.createElement('div');
+
+
+               element.innerHTML =
+                   pdfHtml;
+
+
+               const opt = {
+
+                   margin: 0.3,
+
+                   filename:
+                       `Invoice_${inv.invoiceNumber}_${(
+                           inv.clientName || 'Client'
+                       ).replace(/\s+/g, '_')}.pdf`,
+
+                   image: {
+                       type: 'jpeg',
+                       quality: 0.98
+                   },
+
+                   html2canvas: {
+                       scale: 2
+                   },
+
+                   jsPDF: {
+                       unit: 'in',
+                       format: 'letter',
+                       orientation: 'portrait'
+                   }
+
+               };
+
+
+               html2pdf()
+                   .set(opt)
+                   .from(element)
+                   .save();
+
+           };
+
+
+       /* ==========================================
+          FINANCIAL YEAR FILTER
+       ========================================== */
 
        function populateFinancialYearFilter() {
-           const currentYear = new Date().getFullYear();
-           const yearOptions = ['All'];
-           for(let i = currentYear - 5; i <= currentYear + 1; i++){
-               yearOptions.push(`${i}-${i + 1}`);
+
+           const currentYear =
+               new Date().getFullYear();
+
+
+           const yearOptions =
+               ['All'];
+
+
+           for (
+               let i = currentYear - 5;
+               i <= currentYear + 1;
+               i++
+           ) {
+
+               yearOptions.push(
+                   `${i}-${i + 1}`
+               );
+
            }
-           filterYear.innerHTML = yearOptions.map(y => `<option value="${y}" ${y === 'All' ? 'selected' : ''}>${y}</option>`).join('');
+
+
+           filterYear.innerHTML =
+               yearOptions
+                   .map(
+                       y =>
+                           `<option value="${y}" ${y === 'All' ? 'selected' : ''}>${y}</option>`
+                   )
+                   .join('');
+
        }
 
-       // --- Authentication Event Bindings ---
-       document.getElementById('loginBtn').addEventListener('click', () => {
-           const email = loginEmailInput.value;
-           const password = loginPasswordInput.value;
-           if (!email || !password) return alert('Enter email & password.');
-           signInWithEmailAndPassword(auth, email, password)
-             .then(() => closeAuthModal())
-             .catch(e => alert(e.message));
-       });
 
-       document.getElementById('signUpBtn').addEventListener('click', () => {
-           const email = loginEmailInput.value;
-           const password = loginPasswordInput.value;
-           if (!email || !password) return alert('Enter email & password.');
-           createUserWithEmailAndPassword(auth, email, password)
-             .then(() => closeAuthModal())
-             .catch(e => alert(e.message));
-       });
+       /* ==========================================
+          AUTH
+       ========================================== */
 
-       const performLogout = () => signOut(auth).catch(e => alert(e.message));
-       logoutBtn.addEventListener('click', performLogout);
-       settingsLogoutBtn.addEventListener('click', performLogout);
+       document
+           .getElementById('loginBtn')
+           .addEventListener(
+               'click',
+               () => {
 
-       // --- Navigation Event Bindings ---
-       document.getElementById('nav-dashboard').addEventListener('click', () => switchScreen('dashboard'));
-       document.getElementById('nav-invoice-editor').addEventListener('click', () => { resetFormForNewInvoice(); switchScreen('invoice-editor'); });
-       document.getElementById('nav-settings').addEventListener('click', () => switchScreen('settings'));
-       document.getElementById('dashNewInvBtn').addEventListener('click', () => { resetFormForNewInvoice(); switchScreen('invoice-editor'); });
-       document.getElementById('closeFormBtn').addEventListener('click', () => switchScreen('dashboard'));
+                   const email =
+                       loginEmailInput.value;
 
-       // --- Filter Event Binding ---
-       document.getElementById('applyFilterBtn').addEventListener('click', () => loadInvoicesAndRender());
-       filterStatus.addEventListener('change', () => loadInvoicesAndRender());
-       filterYear.addEventListener('change', () => loadInvoicesAndRender());
+                   const password =
+                       loginPasswordInput.value;
 
-       // --- Auth Observer ---
-       onAuthStateChanged(auth, async (user) => {
-         if (user) {
-           userId = user.uid;
-           userDisplayEmail.textContent = user.email;
-           headerLoginBtn.classList.add('hidden');
-           logoutBtn.classList.remove('hidden');
-           settingsLogoutBtn.classList.remove('hidden');
-           document.getElementById('settingsAuthStatus').textContent = `Status: Logged in as ${user.email}`;
-           closeAuthModal();
-           await loadInvoicesAndRender();
-         } else {
-           userId = null;
-           userDisplayEmail.textContent = 'Not Signed In';
-           headerLoginBtn.classList.remove('hidden');
-           logoutBtn.classList.add('hidden');
-           settingsLogoutBtn.classList.add('hidden');
-           document.getElementById('settingsAuthStatus').textContent = 'Status: Signed Out';
-           await loadInvoicesAndRender();
-         }
-       });
 
-       (function init(){
-         loadPayeeFromStorage();
-         if(logoDataURL) logoPreview.src = logoDataURL;
-         document.getElementById('invoiceNumber').value = generateInvoiceNumber();
-         document.getElementById('invoiceDate').value = today;
-         document.getElementById('dueDate').value = dueDateValue;
-         
-         if(itemsBody.children.length===0) addItemRow();
-         populateFinancialYearFilter();
+                   if (!email || !password) {
+
+                       return alert(
+                           'Enter email & password.'
+                       );
+
+                   }
+
+
+                   signInWithEmailAndPassword(
+                       auth,
+                       email,
+                       password
+                   )
+                   .then(
+                       () =>
+                           closeAuthModal()
+                   )
+                   .catch(
+                       e =>
+                           alert(e.message)
+                   );
+
+               }
+           );
+
+
+       document
+           .getElementById('signUpBtn')
+           .addEventListener(
+               'click',
+               () => {
+
+                   const email =
+                       loginEmailInput.value;
+
+                   const password =
+                       loginPasswordInput.value;
+
+
+                   if (!email || !password) {
+
+                       return alert(
+                           'Enter email & password.'
+                       );
+
+                   }
+
+
+                   createUserWithEmailAndPassword(
+                       auth,
+                       email,
+                       password
+                   )
+                   .then(
+                       () =>
+                           closeAuthModal()
+                   )
+                   .catch(
+                       e =>
+                           alert(e.message)
+                   );
+
+               }
+           );
+
+
+       const performLogout =
+           () =>
+               signOut(auth)
+                   .catch(
+                       e =>
+                           alert(e.message)
+                   );
+
+
+       logoutBtn.addEventListener(
+           'click',
+           performLogout
+       );
+
+
+       settingsLogoutBtn.addEventListener(
+           'click',
+           performLogout
+       );
+
+
+       /* ==========================================
+          NAVIGATION
+       ========================================== */
+
+       document
+           .getElementById('nav-dashboard')
+           .addEventListener(
+               'click',
+               () =>
+                   switchScreen('dashboard')
+           );
+
+
+       document
+           .getElementById('nav-invoice-editor')
+           .addEventListener(
+               'click',
+               () => {
+
+                   resetFormForNewInvoice();
+
+                   switchScreen(
+                       'invoice-editor'
+                   );
+
+               }
+           );
+
+
+       document
+           .getElementById('nav-settings')
+           .addEventListener(
+               'click',
+               () =>
+                   switchScreen('settings')
+           );
+
+
+       document
+           .getElementById('dashNewInvBtn')
+           .addEventListener(
+               'click',
+               () => {
+
+                   resetFormForNewInvoice();
+
+                   switchScreen(
+                       'invoice-editor'
+                   );
+
+               }
+           );
+
+
+       document
+           .getElementById('closeFormBtn')
+           .addEventListener(
+               'click',
+               () =>
+                   switchScreen('dashboard')
+           );
+
+
+       /* ==========================================
+          FILTERS
+       ========================================== */
+
+       document
+           .getElementById('applyFilterBtn')
+           .addEventListener(
+               'click',
+               () =>
+                   loadInvoicesAndRender()
+           );
+
+
+       filterStatus.addEventListener(
+           'change',
+           () =>
+               loadInvoicesAndRender()
+       );
+
+
+       filterYear.addEventListener(
+           'change',
+           () =>
+               loadInvoicesAndRender()
+       );
+
+
+       /* ==========================================
+          AUTH OBSERVER
+       ========================================== */
+
+       onAuthStateChanged(
+           auth,
+           async user => {
+
+               if (user) {
+
+                   userId =
+                       user.uid;
+
+
+                   userDisplayEmail.textContent =
+                       user.email;
+
+
+                   headerLoginBtn.classList.add(
+                       'hidden'
+                   );
+
+
+                   logoutBtn.classList.remove(
+                       'hidden'
+                   );
+
+
+                   settingsLogoutBtn.classList.remove(
+                       'hidden'
+                   );
+
+
+                   document
+                       .getElementById(
+                           'settingsAuthStatus'
+                       )
+                       .textContent =
+                       `Status: Logged in as ${user.email}`;
+
+
+                   closeAuthModal();
+
+
+                   await loadInvoicesAndRender();
+
+
+               } else {
+
+                   userId = null;
+
+
+                   userDisplayEmail.textContent =
+                       'Not Signed In';
+
+
+                   headerLoginBtn.classList.remove(
+                       'hidden'
+                   );
+
+
+                   logoutBtn.classList.add(
+                       'hidden'
+                   );
+
+
+                   settingsLogoutBtn.classList.add(
+                       'hidden'
+                   );
+
+
+                   document
+                       .getElementById(
+                           'settingsAuthStatus'
+                       )
+                       .textContent =
+                       'Status: Signed Out';
+
+
+                   await loadInvoicesAndRender();
+
+               }
+
+           }
+       );
+
+
+       /* ==========================================
+          INITIALISE
+       ========================================== */
+
+       (function init() {
+
+           loadPayeeFromStorage();
+
+
+           if (logoDataURL) {
+
+               logoPreview.src =
+                   logoDataURL;
+
+           }
+
+
+           document
+               .getElementById('invoiceNumber')
+               .value =
+               generateInvoiceNumber();
+
+
+           document
+               .getElementById('invoiceDate')
+               .value =
+               today;
+
+
+           document
+               .getElementById('dueDate')
+               .value =
+               dueDateValue;
+
+
+           if (
+               itemsBody.children.length === 0
+           ) {
+
+               addItemRow();
+
+           }
+
+
+           populateFinancialYearFilter();
+
        })();
+
    </script>
+
 </body>
 </html>
+```
