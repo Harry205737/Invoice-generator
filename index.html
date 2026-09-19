@@ -863,11 +863,11 @@
                  <p style="margin: 6px 0 2px 0; font-size: 13px;"><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}</p>
                  <p style="margin: 2px 0; font-size: 13px;"><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}</p>
                  <p style="margin: 2px 0; font-size: 13px;"><strong>Due Date:</strong> ${escapeHtml(inv.dueDate||'N/A')}</p>
-                 <p style="margin: 6px 0 0 0; font-size: 13px;"><strong>Status:</strong> <span style="font-weight: bold; color:${inv.status==='Paid'?'#16a34a':inv.status==='Partial'?'#d97706':'#dc2626'}">${escapeHtml(inv.status)}</span></p>
+                 <p style="margin: 6px 0 0 0; font-size: 13px;"><strong>Status:</strong> <span style="font-weight: bold; color:#000000">${escapeHtml(inv.status)}</span></p>
                </div>
              </div>
 
-             <div style="background-color: #000000; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+             <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
                <h3 style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #000000; font-weight: bold;">Bill To:</h3>
                <p style="margin: 0; font-size: 14px; font-weight: bold; color: #000000;">${escapeHtml(inv.clientName)}</p>
                <p style="margin: 2px 0; font-size: 12px; color: #000000; whitespace: pre-line;">${escapeHtml(inv.clientAddress)}</p>
@@ -877,7 +877,7 @@
 
              <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
                <thead>
-                 <tr style="background-color: #000000; border-bottom: 2px solid #e5e7eb; color: #000000;">
+                 <tr style="background-color: #f3f4f6; border-bottom: 2px solid #e5e7eb; color: #000000;">
                    <th style="padding: 10px 8px; text-align: left;">Description</th>
                    <th style="padding: 10px 8px; text-align: right; width: 60px;">Qty</th>
                    <th style="padding: 10px 8px; text-align: right; width: 90px;">Unit Price</th>
