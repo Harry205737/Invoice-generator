@@ -449,14 +449,14 @@
        }
        
        function savePayeeToStorage(){
-         ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
+         ['payeeTradingAs','payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
            localStorage.setItem(id, document.getElementById(id).value);
          });
        }
        
        // Pre-populates business information from localStorage
        function loadPayeeFromStorage(){
-         ['payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
+         ['payeeTradingAs','payeeName','payeeABN','payeeAddress','payeePhone','payeeEmail','payeeBSB','payeeAccount'].forEach(id=>{
            const el = document.getElementById(id);
            if (localStorage.getItem(id)) {
              el.value = localStorage.getItem(id);
@@ -602,7 +602,8 @@
            clientPhone: document.getElementById('clientPhone').value || '',
            clientEmail: document.getElementById('clientEmail').value || '',
            clientAddress: document.getElementById('clientAddress').value || '',
-           payeeName: document.getElementById('payeeName').value || '',
+           payeeTradingAs: document.getElementById('payeeTradingAs').value || '',
+            payeeName: document.getElementById('payeeName').value || '',
            payeeABN: document.getElementById('payeeABN').value || '',
            payeeAddress: document.getElementById('payeeAddress').value || '',
            payeePhone: document.getElementById('payeePhone').value || '',
@@ -678,6 +679,14 @@
            document.getElementById('clientPhone').value = inv.clientPhone || '';
            document.getElementById('clientEmail').value = inv.clientEmail || '';
            document.getElementById('clientAddress').value = inv.clientAddress || '';
+            document.getElementById('payeeTradingAs').value = inv.payeeTradingAs || '';
+            document.getElementById('payeeName').value = inv.payeeName || '';
+            document.getElementById('payeeABN').value = inv.payeeABN || '';
+            document.getElementById('payeeAddress').value = inv.payeeAddress || '';
+            document.getElementById('payeePhone').value = inv.payeePhone || '';
+            document.getElementById('payeeEmail').value = inv.payeeEmail || '';
+            document.getElementById('payeeBSB').value = inv.payeeBSB || '';
+            document.getElementById('payeeAccount').value = inv.payeeAccount || '';
            
            document.getElementById('invoiceNumber').value = inv.invoiceNumber || '';
            document.getElementById('invoiceDate').value = inv.invoiceDate || today;
@@ -842,13 +851,14 @@
              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
                <div>
                  ${inv.logo ? `<img src="${escapeHtml(inv.logo)}" style="max-height: 70px; margin-bottom: 12px; display: block;">` : ''}
-                 <h2 style="margin:0; font-size: 20px; font-weight: bold; color: #111827;">${escapeHtml(inv.payeeName||'')}</h2>
+                 ${inv.payeeTradingAs ? `<p style="margin:0 0 2px 0; font-size: 10px; color: #6b7280;">${escapeHtml(inv.payeeTradingAs)} trading as:</p>` : ''}
+                  <h2 style="margin:0; font-size: 20px; font-weight: bold; color: #111827;">${escapeHtml(inv.payeeName||'')}</h2>
                  <p style="margin:2px 0; font-size: 12px; color: #4b5563;">ABN: ${escapeHtml(inv.payeeABN||'')}</p>
                  <p style="margin:2px 0; font-size: 12px; color: #4b5563; whitespace: pre-line;">${escapeHtml(inv.payeeAddress||'')}</p>
                  <p style="margin:2px 0; font-size: 12px; color: #4b5563;">Phone: ${escapeHtml(inv.payeePhone||'')} | Email: ${escapeHtml(inv.payeeEmail||'')}</p>
                </div>
                <div style="text-align: right;">
-                 <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #4f46e5; tracking: wide;">TAX INVOICE</h1>
+                 <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #111827; letter-spacing: 1px;">TAX INVOICE</h1>
                  <p style="margin: 6px 0 2px 0; font-size: 13px;"><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}</p>
                  <p style="margin: 2px 0; font-size: 13px;"><strong>Date:</strong> ${escapeHtml(inv.invoiceDate)}</p>
                  <p style="margin: 2px 0; font-size: 13px;"><strong>Due Date:</strong> ${escapeHtml(inv.dueDate||'N/A')}</p>
@@ -891,7 +901,7 @@
                    <span>Grand Total:</span>
                    <span>${formatCurrency(total)}</span>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #16a34a;">
+                 <div style="display: flex; justify-content: space-between; padding: 4px 0; color: #111827;">
                    <span>Paid to Date:</span>
                    <span>-${formatCurrency(paid)}</span>
                  </div>
